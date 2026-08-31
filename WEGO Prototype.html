@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WEGO — Design Prototype</title>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&display=swap');
+
+    * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+    body {
+      margin: 0;
+      font-family: 'Geist', system-ui, sans-serif;
+      color: #3B223D;
+      background: #F7EEE4;
+    }
+
+    :root {
+      --cream: #FFF8EF;
+      --paper: #FFFDF9;
+      --plum: #3B223D;
+      --muted: #8D7886;
+      --coral: #FF745F;
+      --coral-dark: #E85A45;
+      --peach: #FFE7DB;
+      --lilac: #EEE6FA;
+      --lilac-deep: #C8B6EA;
+      --mint: #DFF5EA;
+      --mint-deep: #8ED0AF;
+      --yellow: #FFF0BD;
+      --yellow-deep: #F0C449;
+      --line: #F0E3D8;
+      --line-deep: #E4D2C1;
+      --font-serif: 'Instrument Serif', 'Times New Roman', serif;
+      --font-sans: 'Geist', system-ui, sans-serif;
+      --r-sm: 12px; --r-md: 20px; --r-lg: 28px; --r-xl: 36px; --r-pill: 999px;
+    }
+
+    .w-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+    .w-mono-caps { font-family: var(--font-sans); font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; color: var(--muted); }
+
+    @keyframes wgFloat {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-6px); }
+    }
+    @keyframes wgFade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes wgSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes wgSeal {
+      0% { transform: rotate(-3deg) scale(0.9); opacity: 0; }
+      60% { transform: rotate(2deg) scale(1.02); opacity: 1; }
+      100% { transform: rotate(0) scale(1); opacity: 1; }
+    }
+
+    /* Canvas wrapper */
+    .canvas {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 48px 40px 120px;
+    }
+    .section {
+      margin-bottom: 80px;
+    }
+    .section-header {
+      margin-bottom: 28px;
+      max-width: 720px;
+    }
+    .section-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .section-title {
+      font-family: var(--font-serif);
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      margin-top: 8px;
+      color: var(--plum);
+    }
+    .section-title em { font-style: italic; }
+    .section-desc {
+      font-size: 15px;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.5;
+      max-width: 560px;
+    }
+    .frames-row {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+
+    /* Style tumbler */
+    .style-tumbler {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(255,253,249,0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--line);
+      padding: 8px;
+      border-radius: 999px;
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(59,34,61,0.06);
+    }
+    .style-tumbler button {
+      border: none;
+      background: transparent;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .style-tumbler button.active {
+      background: var(--plum);
+      color: #fff;
+    }
+    .style-tumbler-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--muted);
+      padding-left: 8px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 60px 40px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-block;
+      padding: 6px 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .hero-title {
+      font-family: var(--font-serif);
+      font-size: 92px;
+      line-height: 0.92;
+      letter-spacing: -0.03em;
+      margin-top: 20px;
+      color: var(--plum);
+    }
+    .hero-title em { font-style: italic; }
+    .hero-subtitle {
+      font-size: 18px;
+      color: var(--muted);
+      margin-top: 24px;
+      max-width: 560px;
+      line-height: 1.5;
+    }
+    .hero-meta {
+      margin-top: 40px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .hero-meta strong { color: var(--plum); font-weight: 600; }
+
+    /* Frame label */
+    .frame-label {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .frame-label strong { color: var(--plum); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="components/design-system.jsx"></script>
+  <script type="text/babel" src="components/wego-state.jsx"></script>
+  <script type="text/babel" src="components/device-frame.jsx"></script>
+  <script type="text/babel" src="components/design-system-showcase.jsx"></script>
+  <script type="text/babel" src="components/screens/home.jsx"></script>
+  <script type="text/babel" src="components/screens/checkin.jsx"></script>
+  <script type="text/babel" src="components/screens/reveal.jsx"></script>
+  <script type="text/babel" src="components/screens/together.jsx"></script>
+  <script type="text/babel" src="components/screens/story.jsx"></script>
+  <script type="text/babel" src="components/screens/we-tab.jsx"></script>
+  <script type="text/babel" src="components/screens/share-cards.jsx"></script>
+  <script type="text/babel" src="components/screens/onboarding.jsx"></script>
+
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

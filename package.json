@@ -1,0 +1,26 @@
+{
+  "name": "wego",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "pnpm --filter @wego/web dev",
+    "build": "pnpm --filter @wego/web build && pnpm --filter @wego/api build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @wego/web test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

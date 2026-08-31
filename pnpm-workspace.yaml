@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - pixi.js@8.20.1

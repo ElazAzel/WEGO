@@ -1,0 +1,18 @@
+import { useState } from "react";
+import type { Tone } from "@wego/domain";
+import { WButton, WCard, WChip, Icon } from "@wego/ui";
+import { PageHeader } from "../../components/layout/PageHeader";
+import { useAppStore } from "../../store/use-app-store";
+
+const activities: Array<{ id: string; title: string; description: string; duration: string; tags: string[]; tone: Tone }> = [
+  { id: "a1", title: "Три фото из старой галереи", description: "Покажите друг другу по три фотографии из старой галереи.", duration: "5 мин", tags: ["дома", "спокойное"], tone: "mint" },
+  { id: "a2", title: "Странный снек до 1000 ₸", description: "Купите друг другу самый странный снек в магазине.", duration: "30 мин", tags: ["улица", "смешное"], tone: "yellow" },
+  { id: "a3", title: "Прогулка без телефонов", description: "20 минут на улице без экранов.", duration: "20 мин", tags: ["улица", "спокойное"], tone: "mint" },
+  { id: "a4", title: "Wego выбирает фильм", description: "Каждый выбирает — случайный жребий решит.", duration: "вечер", tags: ["дома", "спонтанное"], tone: "lilac" },
+  { id: "a5", title: "Максимально плохое фото", description: "Сделайте самое ужасное совместное селфи.", duration: "5 мин", tags: ["дома", "смешное"], tone: "peach" },
+  { id: "a6", title: "Записка без слов", description: "Каждый пишет другому короткую записку.", duration: "5 мин", tags: ["спокойное"], tone: "lilac" },
+];
+const filters = ["все", "дома", "улица", "смешное", "спокойное", "спонтанное"];
+
+export function TogetherPage() { const planned = useAppStore((state) => state.plannedActivities); const toggle = useAppStore((state) => state.togglePlanned); const [filter, setFilter] = useState("все"); const filtered = filter === "все" ? activities : activities.filter((item) => item.tags.includes(filter)); return <div className="app-page"><PageHeader eyebrow="Вместе" title="Что-нибудь сделаем?" description="Каждая активность — воспоминание для Wego." /><div className="filter-row">{filters.map((item) => <WChip key={item} active={item === filter} onClick={() => setFilter(item)}>{item}</WChip>)}</div>{planned.length > 0 && <section className="activity-section"><div className="w-mono-caps">Запланировано</div><div className="stack">{activities.filter((item) => planned.includes(item.id)).map((item) => <ActivityCard key={item.id} item={item} isPlanned onToggle={() => toggle(item.id)} />)}</div></section>}<section className="activity-section"><div className="w-mono-caps">Идеи для вас</div><div className="stack">{filtered.map((item) => <ActivityCard key={item.id} item={item} isPlanned={planned.includes(item.id)} onToggle={() => toggle(item.id)} />)}</div></section></div>; }
+function ActivityCard({ item, isPlanned, onToggle }: { item: (typeof activities)[number]; isPlanned: boolean; onToggle: () => void }) { return <WCard tone={item.tone} className="activity-card"><div><small className="activity-duration">{item.duration}</small><div className="w-serif activity-title">{item.title}</div><p>{item.description}</p></div><button type="button" className={`round-action ${isPlanned ? "is-planned" : ""}`} onClick={onToggle} aria-pressed={isPlanned} aria-label={isPlanned ? "Убрать из запланированного" : "Запланировать"}>{isPlanned ? <Icon name="check" /> : "+"}</button></WCard>; }

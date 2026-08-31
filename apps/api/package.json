@@ -1,0 +1,14 @@
+{
+  "name": "@wego/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": { "@wego/domain": "workspace:*", "fastify": "^5.2.0", "zod": "^3.24.1" }
+}
