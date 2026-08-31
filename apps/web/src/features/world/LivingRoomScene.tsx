@@ -12,6 +12,7 @@ import { MoveInGuide } from "./MoveInGuide";
 import { RoomIntro } from "./RoomIntro";
 import { CozyToast, type CozyFeedback } from "./CozyToast";
 import { MemoryWall } from "./MemoryWall";
+import { roomRendererForFlag } from "./game-scene";
 
 const PixiRoomScene = lazy(() => import("./PixiRoomScene"));
 
@@ -40,6 +41,7 @@ export function LivingRoomScene({ room, style, stage, daysAlive, character }: Li
   const fallback = getWegoSceneFallback(style, stage);
   const roomPhase = world.cozy.roomPhase;
   const moveInStep = world.cozy.moveInStep;
+  const roomRenderer = roomRendererForFlag(import.meta.env.VITE_USE_PIXI_SCENE);
   const notify = useCallback((next: { message: string; reward: number }) => setFeedback({ message: next.message, reward: next.reward }), []);
   const runAction = useCallback((type: WorldActionType, objectId?: RoomObjectId) => {
     haptic("light");
@@ -97,9 +99,9 @@ export function LivingRoomScene({ room, style, stage, daysAlive, character }: Li
     return () => window.clearInterval(timer);
   }, [moveInStep, roomPhase, world.cozy.vibe]);
 
-  return <section className="living-room-scene" aria-label="Живая комната Wego" data-vibe={world.cozy.vibe} data-room-phase={roomPhase}>
+  return <section className="living-room-scene" aria-label="Живая комната Wego" data-vibe={world.cozy.vibe} data-room-phase={roomPhase} data-renderer={roomRenderer}>
     <div className="living-room-scene__canvas">
-      {import.meta.env.VITE_USE_PIXI_SCENE === "true" ? <Suspense fallback={<CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}><PixiRoomScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} /></Suspense> : <CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}
+      {roomRenderer === "pixi" ? <Suspense fallback={<CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}><PixiRoomScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} characterLine={characterLine} world={world} onWorldAction={runAction} onRoomInteraction={runRoomInteraction} /></Suspense> : <CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}
     </div>
     {roomPhase === "showcase" && <RoomIntro onStart={runStartMoveIn} />}
     {roomPhase === "move-in" && <MoveInGuide step={moveInStep} onOpenRituals={() => openSheet("rituals")} onPlaceFurniture={runPlaceFirstFurniture} />}

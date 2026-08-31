@@ -7,5 +7,9 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react()],
   resolve: { alias: { "@wego/domain": path.resolve(currentDir, "../../packages/domain/src"), "@wego/ui": path.resolve(currentDir, "../../packages/ui/src") } },
-  test: { environment: "jsdom", setupFiles: ["./src/test-setup.ts"] },
+  test: {
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
+    server: { deps: { inline: ["@pixi/react", "react-reconciler"] } },
+  },
 });

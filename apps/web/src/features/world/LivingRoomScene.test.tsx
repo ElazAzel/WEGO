@@ -37,6 +37,7 @@ describe("LivingRoomScene equipment", () => {
 
     const { container } = render(<LivingRoomScene {...props} />);
 
+    expect(container.querySelector(".living-room-scene")).toHaveAttribute("data-renderer", "pixi");
     expect(container.querySelector(".living-room-scene__wego--sunny-scarf")).toBeInTheDocument();
   });
 

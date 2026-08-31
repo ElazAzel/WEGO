@@ -107,6 +107,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .wego-room-art { bottom: 18%; filter: drop-shadow(0 8px 12px rgba(59, 34, 61, .2)); left: 50%; position: absolute; transform: translateX(-50%); width: 42%; animation: wgFloat 4s ease-in-out infinite; }
 .living-room-scene { aspect-ratio: 1 / 1.05; background: var(--peach); border: 1px solid var(--line); border-radius: var(--r-xl); isolation: isolate; overflow: hidden; position: relative; }
 .living-room-scene__canvas { inset: 0; position: absolute; z-index: 0; }
+.pixi-room-runtime { height: 100%; overflow: hidden; position: relative; width: 100%; }
+.pixi-room-runtime canvas { display: block; height: 100% !important; object-fit: cover; width: 100% !important; }
+.pixi-room-runtime__speech { backdrop-filter: blur(10px); background: rgba(255, 253, 249, .92); border: 1px solid rgba(240, 227, 216, .92); border-radius: 16px 16px 5px 16px; box-shadow: 0 8px 20px rgba(59, 34, 61, .12); color: var(--plum); font-size: 11px; line-height: 1.3; max-width: 172px; min-height: 34px; padding: 8px 11px; pointer-events: none; position: absolute; right: 5%; text-align: center; top: 12%; z-index: 8; }
+.pixi-room-runtime__controls { inset: 0; pointer-events: none; position: absolute; z-index: 9; }
+.pixi-room-runtime__mirror { align-items: center; appearance: none; background: transparent; border: 0; border-radius: 26px; color: transparent; cursor: pointer; display: flex; justify-content: center; opacity: 0; pointer-events: auto; position: absolute; }
+.pixi-room-runtime__mirror:focus-visible { background: rgba(255, 253, 249, .9); box-shadow: 0 0 0 3px rgba(255, 116, 95, .65); color: var(--coral-dark); opacity: 1; outline: 0; }
+.pixi-room-runtime__mirror--wego { height: 28%; left: 36%; top: 57%; width: 28%; }
+.pixi-room-runtime__mirror--lamp { height: 31%; left: 63%; top: 42%; width: 21%; }
+.pixi-room-runtime__mirror--window { height: 43%; left: 8%; top: 20%; width: 38%; }
+.pixi-room-runtime__mirror--table { height: 28%; left: 64%; top: 62%; width: 28%; }
+.pixi-room-runtime__mirror--sofa { height: 34%; left: 9%; top: 56%; width: 41%; }
 .living-room-scene__composite { height: 100%; position: relative; width: 100%; }
 .living-room-scene__background { display: block; height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
 .room-equipment-layer { inset: 0; pointer-events: none; position: absolute; z-index: 1; }
