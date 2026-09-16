@@ -29,7 +29,7 @@ export function OnboardingPage() {
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const nameIsValid = validateSpaceName(name).success;
-  const inviteUrl = useMemo(() => remoteInviteUrl ?? `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "wego_bot"}/app?startapp=join_${spaceId || "local-preview"}`, [remoteInviteUrl, spaceId]);
+  const inviteUrl = useMemo(() => remoteInviteUrl ?? `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "wego_app_bot"}/app?startapp=join_${spaceId || "local-preview"}`, [remoteInviteUrl, spaceId]);
 
   async function next() {
     haptic();
