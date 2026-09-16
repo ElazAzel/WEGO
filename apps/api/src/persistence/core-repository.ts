@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
-import type { LedgerEntry, SparkWallet, WorldSnapshot } from "@wego/domain";
+import type { LedgerEntry, RewardGuardState, SparkWallet, WorldSnapshot } from "@wego/domain";
 import type { RegionTier } from "../modules/billing/regional-pricing";
 import type { EncryptedNote } from "../security/crypto";
 import type { SqlPool } from "./postgres";
+import { decodeRewardGuardRows, encodeRewardGuardRows, type RewardGuardRow } from "./reward-guards";
 
 export type PersistedUser = { id: string; telegramId: number; name: string; tone: "coral" | "lilac"; regionTier: RegionTier };
 export type PersistedSpace = { id: string; name: string; type: "pair" | "friends" | "family"; stage: "egg" | "baby" | "adult"; character: string; daysAlive: number; style: "a" | "b"; room: "warm" | "morning"; timezone: string; members: string[]; inviteHash?: string; inviteExpiresAt?: string };
@@ -10,6 +11,7 @@ export type PersistedCheckin = { date: string; userId: string; mood: string; ene
 export type PersistedStory = { id: string; sourceType: string; sourceId: string; date: string; type: string; title: string; body: string; tone: string };
 export type PersistedSession = { userId: string; expiresAt: number };
 export type PersistedWorld = { spaceId: string; world: WorldSnapshot; revision: number };
+export type PersistedRewardGuards = { userId: string; state: RewardGuardState };
 
 export type CoreHydration = {
   users: PersistedUser[];
@@ -21,6 +23,7 @@ export type CoreHydration = {
   wallets: SparkWallet[];
   ledgers: LedgerEntry[];
   worlds: PersistedWorld[];
+  rewardGuards: PersistedRewardGuards[];
 };
 
 export interface CoreRepository {
@@ -33,7 +36,7 @@ export interface CoreRepository {
   close(): Promise<void>;
 }
 
-const emptyHydration = (): CoreHydration => ({ users: [], spaces: [], checkins: [], stories: [], planned: [], wallets: [], ledgers: [], worlds: [] });
+const emptyHydration = (): CoreHydration => ({ users: [], spaces: [], checkins: [], stories: [], planned: [], wallets: [], ledgers: [], worlds: [], rewardGuards: [] });
 const tokenHash = (token: string): string => createHash("sha256").update(token).digest("hex");
 
 export class MemoryCoreRepository implements CoreRepository {
@@ -91,7 +94,7 @@ export class PostgresCoreRepository implements CoreRepository {
     if (rows.length === 0) return { ...emptyHydration(), users };
     const spaceIds = rows.map((row) => row.id);
     const memberIds = [...new Set(rows.flatMap((row) => row.members))];
-    const [members, invitations, checkins, stories, planned, wallets, ledgers, worlds] = await Promise.all([
+    const [members, invitations, checkins, stories, planned, wallets, ledgers, worlds, guardRows] = await Promise.all([
       client.query<PersistedUser>("select id, telegram_id as \"telegramId\", display_name as name, tone, region_tier as \"regionTier\" from users where id = any($1::text[])", [memberIds]),
       client.query<{ space_id: string; token_hash: string; expires_at: string }>("select distinct on (space_id) space_id, token_hash, expires_at from invitations where space_id = any($1::text[]) and accepted_by is null and expires_at > now() order by space_id, created_at desc", [spaceIds]),
       client.query<DbCheckin>("select local_date::text as date,user_id,mood,energy,want,note_ciphertext,note_iv,note_auth_tag,guess,revealed_at,client_mutation_id from daily_checkins where space_id = any($1::text[])", [spaceIds]),
@@ -100,6 +103,7 @@ export class PostgresCoreRepository implements CoreRepository {
       client.query<SparkWallet>("select user_id as \"userId\",balance,lifetime_earned as \"lifetimeEarned\",lifetime_spent as \"lifetimeSpent\",daily_earned as \"dailyEarned\",daily_earned_date::text as \"dailyEarnedDate\" from spark_wallets where user_id = any($1::text[])", [memberIds]),
       client.query<LedgerEntry>("select id,user_id as \"userId\",delta,balance_after as \"balanceAfter\",reason,idempotency_key as \"idempotencyKey\",created_at as \"createdAt\",metadata from spark_ledger where user_id = any($1::text[]) order by created_at desc limit 1000", [memberIds]),
       client.query<{ space_id: string; version: number; snapshot: WorldSnapshot }>("select space_id,version,snapshot from world_snapshots where space_id = any($1::text[])", [spaceIds]),
+      client.query<RewardGuardRow>("select user_id, local_date::text as local_date, action_type, action_key, rewarded_at::text as rewarded_at from reward_action_guards where user_id = any($1::text[]) order by local_date desc, rewarded_at desc", [memberIds]),
     ]);
     const allUsers = [...users, ...members.rows].filter((user, index, list) => list.findIndex((item) => item.id === user.id) === index);
     const inviteBySpace = new Map(invitations.rows.map((invite) => [invite.space_id, invite]));
@@ -112,6 +116,7 @@ export class PostgresCoreRepository implements CoreRepository {
       wallets: wallets.rows,
       ledgers: ledgers.rows,
       worlds: worlds.rows.map((item) => ({ spaceId: item.space_id, revision: item.version, world: item.snapshot })),
+      rewardGuards: memberIds.map((userId) => decodeRewardGuardRows(userId, guardRows.rows)).filter((item): item is PersistedRewardGuards => Boolean(item)),
     };
   }
 
@@ -139,6 +144,10 @@ export class PostgresCoreRepository implements CoreRepository {
       for (const wallet of snapshot.wallets) await client.query("insert into spark_wallets(user_id,balance,lifetime_earned,lifetime_spent,daily_earned,daily_earned_date) values ($1,$2,$3,$4,$5,$6) on conflict (user_id) do update set balance=excluded.balance,lifetime_earned=excluded.lifetime_earned,lifetime_spent=excluded.lifetime_spent,daily_earned=excluded.daily_earned,daily_earned_date=excluded.daily_earned_date", [wallet.userId, wallet.balance, wallet.lifetimeEarned, wallet.lifetimeSpent, wallet.dailyEarned, wallet.dailyEarnedDate]);
       for (const ledger of snapshot.ledgers) await client.query("insert into spark_ledger(id,user_id,delta,balance_after,reason,idempotency_key,metadata,created_at) values ($1,$2,$3,$4,$5,$6,$7,$8) on conflict (id) do nothing", [ledger.id, ledger.userId, ledger.delta, ledger.balanceAfter, ledger.reason, ledger.idempotencyKey, JSON.stringify(ledger.metadata ?? {}), ledger.createdAt]);
       for (const world of snapshot.worlds) await client.query("insert into world_snapshots(space_id,version,snapshot) values ($1,$2,$3) on conflict (space_id) do update set version=excluded.version,snapshot=excluded.snapshot,updated_at=now()", [world.spaceId, world.revision, JSON.stringify(world.world)]);
+      for (const guards of snapshot.rewardGuards) {
+        await client.query("delete from reward_action_guards where user_id=$1", [guards.userId]);
+        for (const row of encodeRewardGuardRows(guards.userId, guards.state)) await client.query("insert into reward_action_guards(user_id,local_date,action_type,action_key,rewarded_at) values ($1,$2,$3,$4,$5) on conflict do nothing", [row.user_id, row.local_date, row.action_type, row.action_key, row.rewarded_at]);
+      }
       await client.query("commit");
     } catch (error) { await client.query("rollback").catch(() => undefined); throw error; } finally { client.release?.(); }
   }

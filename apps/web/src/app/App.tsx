@@ -18,7 +18,7 @@ import { HistoryPage } from "../features/life/HistoryPage";
 import { PetPage } from "../features/life/PetPage";
 import { NotificationsPage } from "../features/life/NotificationsPage";
 import { useAppStore, type AppToday } from "../store/use-app-store";
-import { acceptInvite, apiFetch, authenticateTelegram, isApiEnabled } from "../lib/api-client";
+import { acceptInvite, apiFetch, authenticateTelegram, isApiEnabled, isHostedBuildMisconfigured } from "../lib/api-client";
 import { useSpaceEvents } from "../hooks/useSpaceEvents";
 import { registerWegoServiceWorker } from "../lib/pwa";
 import { getJoinToken, isTelegram } from "../lib/telegram";
@@ -26,6 +26,7 @@ import { getJoinToken, isTelegram } from "../lib/telegram";
 export function App() {
   useEffect(() => { void registerWegoServiceWorker(); }, []);
   const remoteMode = isApiEnabled();
+  const hostedBuildMisconfigured = isHostedBuildMisconfigured(import.meta.env);
   const [remoteStatus, setRemoteStatus] = useState<"idle" | "loading" | "ready" | "error">(remoteMode ? "loading" : "ready");
   const [remoteError, setRemoteError] = useState<string | null>(null);
   const hasSpace = Boolean(useAppStore((state) => state.space));
@@ -72,6 +73,7 @@ export function App() {
     })();
     return () => { mounted = false; };
   }, [hydrate, remoteMode]);
+  if (hostedBuildMisconfigured) return <RemoteGate status="error" error="Production ещё не подключён к API. Откройте WEGO после настройки backend и Telegram-входа." onRetry={() => window.location.reload()} />;
   if (remoteMode && remoteStatus !== "ready") return <RemoteGate status={remoteStatus} error={remoteError} onRetry={() => window.location.reload()} />;
   return (
     <Routes>

@@ -9,9 +9,11 @@ const sessionKey = "wego-api-session-v1";
 
 export type ApiSession = { user: { id: string; name: string; tone: "coral" | "lilac" }; token: string };
 
+export function isHostedBuildMisconfigured(env: { PROD: boolean; VITE_API_ENABLED?: string; VITE_API_URL?: string }): boolean {
+  return env.PROD && !(env.VITE_API_ENABLED === "true" && Boolean(env.VITE_API_URL));
+}
+
 export function isApiEnabled(): boolean {
-  // Telegram can open the hosted demo before a backend is configured. Keep that
-  // path local-first instead of making every Telegram launch call a missing /v1.
   return (import.meta.env.VITE_API_ENABLED === "true" && Boolean(import.meta.env.VITE_API_URL)) || (import.meta.env.DEV && getTelegramContext().isTelegram);
 }
 
