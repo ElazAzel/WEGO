@@ -1,11 +1,12 @@
 import type { WegoStage, WegoStyle } from "@wego/domain";
 import { wegoAsset } from "../../lib/asset";
+import { withPublicBase } from "../../lib/public-url";
 
 export type WegoSceneState = "idle" | "pet";
 
 const generatedAssets = {
-  idle: "/assets/wego/v2/wego-idle.png",
-  pet: "/assets/wego/v2/wego-pet-wave.png",
+  idle: withPublicBase("/assets/wego/v2/wego-idle.png"),
+  pet: withPublicBase("/assets/wego/v2/wego-pet-wave.png"),
 } as const;
 
 export function getWegoSceneAsset(_style: WegoStyle, _stage: WegoStage, state: WegoSceneState, _outfitId = "everyday"): string {

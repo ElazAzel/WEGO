@@ -1,13 +1,6 @@
 @import url("./tokens.css");
 @import url("./animations.css");
 
-@font-face { font-family: "Instrument Serif"; src: url("/fonts/instrument-serif-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "Instrument Serif"; src: url("/fonts/instrument-serif-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
-@font-face { font-family: "Geist"; src: url("/fonts/geist-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: "Geist"; src: url("/fonts/geist-medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: "Geist"; src: url("/fonts/geist-semibold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: "Geist"; src: url("/fonts/geist-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
-
 * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 html, body, #root { margin: 0; min-width: 320px; min-height: 100%; background: var(--cream); }
 body { color: var(--plum); font-family: var(--font-sans); }

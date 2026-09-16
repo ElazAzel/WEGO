@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(public readonly status: number, message: string, public readonly code = "API_ERROR") { super(message); }
 }
 
-const baseUrl = import.meta.env.VITE_API_URL || "/v1";
+export const apiBaseUrl = (import.meta.env.VITE_API_URL || "/v1").replace(/\/$/, "");
 const sessionKey = "wego-api-session-v1";
 
 export type ApiSession = { user: { id: string; name: string; tone: "coral" | "lilac" }; token: string };
@@ -13,6 +13,10 @@ export function isApiEnabled(): boolean {
   // Telegram can open the hosted demo before a backend is configured. Keep that
   // path local-first instead of making every Telegram launch call a missing /v1.
   return import.meta.env.VITE_API_ENABLED === "true" || (import.meta.env.DEV && getTelegramContext().isTelegram);
+}
+
+export function apiUrl(path: string): string {
+  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 function getToken(): string | null {
@@ -37,7 +41,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}, withS
   const headers = new Headers(options.headers);
   if (options.body !== undefined && options.body !== null) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${baseUrl}${path}`, { credentials: "include", ...options, headers });
+  const response = await fetch(apiUrl(path), { credentials: "include", ...options, headers });
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { error?: { message?: string; code?: string } } | null;
     throw new ApiError(response.status, body?.error?.message ?? "Что-то пошло не так", body?.error?.code);

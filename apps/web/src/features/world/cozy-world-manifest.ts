@@ -1,4 +1,5 @@
 import type { RoomPhase, RoomSlot } from "@wego/domain";
+import { withPublicBase } from "../../lib/public-url";
 
 export type CozyObjectId = "fairy-lights" | "speaker" | "memory-wall" | "note-board" | "console" | "candle" | "mirror" | "gift-box";
 export type CozyObjectAction = "toggle-lights" | "open-vibes" | "open-memories" | "send-pulse" | "open-game" | "toggle-candle" | "open-wardrobe" | "claim-quest";
@@ -15,7 +16,7 @@ export interface CozyObjectSprite {
   phases?: readonly RoomPhase[];
 }
 
-const asset = (name: string) => `/assets/rooms/v4/props/${name}.png`;
+const asset = (name: string) => withPublicBase(`/assets/rooms/v4/props/${name}.png`);
 
 export const cozyCharacterZIndex = 9;
 

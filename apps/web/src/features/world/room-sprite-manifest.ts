@@ -1,5 +1,6 @@
 import type { RoomEnvironmentState, RoomInteraction, RoomObjectId } from "@wego/domain";
 import type { WorldActionType } from "../../store/use-app-store";
+import { withPublicBase } from "../../lib/public-url";
 
 export type RoomSpriteId = "sofa" | "rug" | "bowl" | "lamp" | "table" | "shelf" | "plants" | "curtains-closed" | "tea-set";
 
@@ -15,15 +16,15 @@ export interface RoomSpriteDefinition {
 }
 
 const spriteAssets: Record<RoomSpriteId, string> = {
-  sofa: "/assets/rooms/v3/props/sofa-cozy.png",
-  rug: "/assets/rooms/v3/props/rug-mint.png",
-  bowl: "/assets/rooms/v3/props/bowl-food.png",
-  lamp: "/assets/rooms/v3/props/lamp-coral.png",
-  table: "/assets/rooms/v3/props/coffee-table-gifts.png",
-  shelf: "/assets/rooms/v3/props/bookshelf-cozy.png",
-  plants: "/assets/rooms/v3/props/plants-cozy.png",
-  "curtains-closed": "/assets/rooms/v3/props/curtains-closed.png",
-  "tea-set": "/assets/rooms/v3/props/tea-set.png",
+  sofa: withPublicBase("/assets/rooms/v3/props/sofa-cozy.png"),
+  rug: withPublicBase("/assets/rooms/v3/props/rug-mint.png"),
+  bowl: withPublicBase("/assets/rooms/v3/props/bowl-food.png"),
+  lamp: withPublicBase("/assets/rooms/v3/props/lamp-coral.png"),
+  table: withPublicBase("/assets/rooms/v3/props/coffee-table-gifts.png"),
+  shelf: withPublicBase("/assets/rooms/v3/props/bookshelf-cozy.png"),
+  plants: withPublicBase("/assets/rooms/v3/props/plants-cozy.png"),
+  "curtains-closed": withPublicBase("/assets/rooms/v3/props/curtains-closed.png"),
+  "tea-set": withPublicBase("/assets/rooms/v3/props/tea-set.png"),
 };
 
 export const roomSprites: readonly RoomSpriteDefinition[] = [
