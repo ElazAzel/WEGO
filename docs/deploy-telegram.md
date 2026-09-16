@@ -41,7 +41,7 @@ GitHub Pages публикует веб-MVP с тем же сценарием, ч
 
 API — Fastify из `apps/api`. Для production ему нужны Node 24, PostgreSQL и секреты из `.env.example`. Перед запуском примените миграции из `packages/db/migrations` в каноническом порядке.
 
-Создан отдельный Vercel-проект `wego-api`: [wego-api-elazazels-projects.vercel.app](https://wego-api-elazazels-projects.vercel.app). В deployment уже есть Fastify entrypoint, но runtime намеренно не считается готовым, пока в Vercel не заданы приватные env-переменные из `apps/api/.env.example`.
+Создан отдельный Vercel-проект `wego-api`. Публичный runtime-домен для Telegram: [wego-api-alpha.vercel.app](https://wego-api-alpha.vercel.app); командный alias оставлен под Vercel Authentication. В deployment уже есть Fastify entrypoint, но runtime намеренно не считается готовым, пока в Vercel не заданы приватные env-переменные из `apps/api/.env.example`.
 
 Для WEGO создан отдельный production-проект Supabase: `wego-production`, ref `zzoqnxugybjvoroqplds`, регион `eu-central-1`. В него уже применены все пять миграций из `packages/db/migrations`, а тестовый запрос подтвердил 27 таблиц в `public`. WEGO не подключается к другим проектам организации.
 
