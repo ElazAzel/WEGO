@@ -4,6 +4,7 @@ import { applySparkTransaction, canEarnDaily, canRewardAction, checkinRewardInpu
 import type { HomeVariant, MoodId, StoryEntry, SpaceType, Tone, WantId, EnergyId, WegoStage, WegoStyle, WorldSnapshot, EconomyState, RoomObjectId, SharedPlan, MemoryEntry, RoomInteraction, RoomSlot, WegoActionType, RoomVibe, RitualId, PartnerPulseKind, WorldAction, MoveInItemId } from "@wego/domain";
 import { readLocalState, writeLocalState } from "../lib/storage";
 import { createWorldCommand, type WorldCommandResponse } from "../lib/world-sync";
+import { isApiEnabled } from "../lib/api-client";
 
 export interface AppUser { id: string; name: string; tone: Tone; }
 export interface AppSpace { id: string; name: string; type: SpaceType; stage: WegoStage; character: string; daysAlive: number; style: WegoStyle; room: "warm" | "morning"; timezone: string; }
@@ -80,7 +81,7 @@ export const useAppStore = create<AppState>((set, get) => {
     const result = reduceWorld(state.world, action);
     let economy = state.economy;
     let reward = 0;
-    if (result.reward && canEarnDaily(economy, result.reward.amount, action.at.slice(0, 10), DAILY_SPARK_CAP)) {
+    if (!isApiEnabled() && result.reward && canEarnDaily(economy, result.reward.amount, action.at.slice(0, 10), DAILY_SPARK_CAP)) {
       economy = applySparkTransaction(economy, { id: `ledger-${action.id}`, userId: economy.wallet.userId, amount: result.reward.amount, reason: result.reward.reason, idempotencyKey: result.reward.idempotencyKey, createdAt: action.at, metadata: { action: action.type } });
       reward = result.reward.amount;
     }
@@ -136,7 +137,7 @@ export const useAppStore = create<AppState>((set, get) => {
       let reward = 0;
       const guardedAction = type === "pet" || type === "memory" || type === "play" ? type : null;
       const rewardAllowed = result.reward && (guardedAction ? canRewardAction(economy, { action: guardedAction, amount: result.reward.amount, at, gameId: objectId }).allowed : canEarnDaily(economy, result.reward.amount, at.slice(0, 10), DAILY_SPARK_CAP));
-      if (result.reward && rewardAllowed) {
+      if (!isApiEnabled() && result.reward && rewardAllowed) {
         economy = applySparkTransaction(economy, { id: `ledger-${action.id}`, userId: economy.wallet.userId, amount: result.reward.amount, reason: result.reward.reason, idempotencyKey: result.reward.idempotencyKey, createdAt: at, metadata: { action: type } });
         if (guardedAction) economy = markRewardedAction(economy, { action: guardedAction, amount: result.reward.amount, at, gameId: objectId });
         reward = result.reward.amount;
@@ -270,7 +271,7 @@ async function syncWorldAction(action: WorldAction, expectedRevision: number): P
     const { apiFetch, isApiEnabled } = await import("../lib/api-client");
     if (!isApiEnabled()) return;
     const response = await apiFetch<WorldCommandResponse>("/world/commands", { method: "POST", body: JSON.stringify(createWorldCommand(action, expectedRevision)) });
-    useAppStore.setState({ world: normalizeWorld(response.world), worldRevision: response.revision });
+    useAppStore.setState((state) => ({ world: normalizeWorld(response.world), worldRevision: response.revision, economy: response.wallet ? { ...state.economy, wallet: response.wallet } : state.economy }));
   } catch {
     try {
       const { apiFetch, isApiEnabled } = await import("../lib/api-client");

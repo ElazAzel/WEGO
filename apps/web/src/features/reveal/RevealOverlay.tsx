@@ -6,17 +6,34 @@ import { wegoAsset } from "../../lib/asset";
 import { haptic } from "../../lib/telegram";
 import { useAppStore } from "../../store/use-app-store";
 import { useUiStore } from "../../store/use-ui-store";
+import { apiFetch, isApiEnabled } from "../../lib/api-client";
 
 export function RevealOverlay() {
   const closeReveal = useUiStore((state) => state.closeReveal);
   const openShare = useUiStore((state) => state.openShare);
   const { space, me, partner, today, addStory } = useAppStore();
+  const hydrate = useAppStore((state) => state.hydrate);
+  const [remoteReady, setRemoteReady] = useState(!isApiEnabled());
+  const [remoteError, setRemoteError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isApiEnabled() || remoteReady || !space || !today.partnerMood || today.revealed) return;
+    let mounted = true;
+    void apiFetch<RemoteReveal>(`/spaces/${space.id}/reveals/${today.date}`)
+      .then((remote) => { if (!mounted) return; hydrate({ today: { ...today, myGuess: remote.guess.selected, partnerNote: remote.partner.note ?? null, revealed: true } }); setRemoteReady(true); })
+      .catch((cause) => { if (!mounted) return; setRemoteError(cause instanceof Error ? cause.message : "Reveal пока недоступен."); setRemoteReady(true); });
+    return () => { mounted = false; };
+  }, [hydrate, remoteReady, space, today, today.date, today.partnerMood, today.revealed]);
+  if (!remoteReady) return <div className="w-sheet-backdrop"><WCard tone="paper"><div className="w-serif" style={{ fontSize: 24 }}>Открываем Reveal</div><p className="muted-copy">Проверяем, что оба ответа сохранены.</p></WCard></div>;
+  if (remoteError) return <div className="w-sheet-backdrop"><WCard tone="paper"><div className="w-serif" style={{ fontSize: 24 }}>Не открылось</div><p className="muted-copy">{remoteError}</p><WButton onClick={closeReveal}>Закрыть</WButton></WCard></div>;
   if (!space || !me || !partner || !today.myMood || !today.partnerMood || !today.myEnergy || !today.partnerEnergy || !today.myWant || !today.partnerWant) return <div className="w-sheet-backdrop"><WCard tone="paper"><div className="w-serif" style={{ fontSize: 24 }}>Не открылось</div><p className="muted-copy">Пока не хватает ответа второго участника.</p><WButton onClick={closeReveal}>Закрыть</WButton></WCard></div>;
   const completeToday: CompleteToday = { ...today, myMood: today.myMood, myEnergy: today.myEnergy, myWant: today.myWant, partnerMood: today.partnerMood, partnerEnergy: today.partnerEnergy, partnerWant: today.partnerWant };
   const insight = deriveInsight({ myMood: completeToday.myMood, myEnergy: completeToday.myEnergy, myWant: completeToday.myWant, partnerMood: completeToday.partnerMood, partnerEnergy: completeToday.partnerEnergy, partnerWant: completeToday.partnerWant });
-  const saveToStory = () => { const id = `reveal-${today.date}`; addStory({ id, sourceType: "reveal", sourceId: id, date: today.date, type: "reveal", title: "Сегодняшний Reveal", body: `${me.name} — ${moodLabel(today.myMood)}. ${partner.name} — ${moodLabel(today.partnerMood)}.`, tone: "lilac", createdAt: new Date().toISOString() }); useAppStore.getState().updateToday({ revealed: true }); haptic(); closeReveal(); openShare(id); };
+  const saveToStory = () => { const id = `reveal-${today.date}`; void (async () => { if (isApiEnabled()) { const remote = await apiFetch<RemoteStory>(`/spaces/${space.id}/reveals/${today.date}/story`, { method: "POST" }); addStory({ id: remote.id, sourceType: "reveal", sourceId: remote.sourceId, date: remote.date, type: "reveal", title: remote.title, body: remote.body, tone: remote.tone as Tone, createdAt: new Date().toISOString() }); } else addStory({ id, sourceType: "reveal", sourceId: id, date: today.date, type: "reveal", title: "Сегодняшний Reveal", body: `${me.name} — ${moodLabel(today.myMood)}. ${partner.name} — ${moodLabel(today.partnerMood)}.`, tone: "lilac", createdAt: new Date().toISOString() }); useAppStore.getState().updateToday({ revealed: true }); haptic(); closeReveal(); openShare(id); })().catch(() => undefined); };
   return <RevealContent variant={useAppStore.getState().revealVariant} closeReveal={closeReveal} saveToStory={saveToStory} openShare={openShare} space={space} me={me} partner={partner} today={completeToday} insight={insight} />;
 }
+
+type RemoteReveal = { partner: { note?: string | null }; guess: { selected: MoodId | null } };
+type RemoteStory = { id: string; sourceId: string; date: string; title: string; body: string; tone: string };
 
 type CompleteToday = Omit<ReturnType<typeof useAppStore.getState>["today"], "myMood" | "myEnergy" | "myWant" | "partnerMood" | "partnerEnergy" | "partnerWant"> & { myMood: MoodId; myEnergy: EnergyId; myWant: WantId; partnerMood: MoodId; partnerEnergy: EnergyId; partnerWant: WantId };
 type RevealProps = { closeReveal: () => void; saveToStory: () => void; openShare: (id: string) => void; space: NonNullable<ReturnType<typeof useAppStore.getState>["space"]>; me: NonNullable<ReturnType<typeof useAppStore.getState>["me"]>; partner: NonNullable<ReturnType<typeof useAppStore.getState>["partner"]>; today: CompleteToday; insight: ReturnType<typeof deriveInsight>; variant: "v1" | "v2" };

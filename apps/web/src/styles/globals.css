@@ -120,6 +120,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .invite-card { align-items: center; display: flex; gap: 8px; justify-content: space-between; margin-top: 20px; padding: 16px; }
 .invite-card code { color: #4a3168; font-size: 11px; overflow-wrap: anywhere; }
 .invite-card button { background: var(--plum); border: 0; border-radius: var(--r-pill); color: #fff; cursor: pointer; flex-shrink: 0; font-size: 12px; font-weight: 600; padding: 9px 12px; }
+.invite-card__actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.invite-card__actions button:last-child { background: transparent; border: 1px solid rgba(74,49,104,.24); color: var(--plum); }
+.remote-gate { align-items: center; background: var(--cream); color: var(--plum); display: flex; flex-direction: column; justify-content: center; min-height: 100dvh; padding: 32px 24px; text-align: center; }
+.remote-gate h1 { font-size: 38px; margin: 14px 0 10px; }
+.remote-gate p { color: var(--muted); line-height: 1.5; max-width: 340px; }
+.remote-gate button { background: var(--coral); border: 0; border-radius: var(--r-pill); color: #fff; cursor: pointer; font-weight: 700; padding: 13px 20px; }
 .style-switch { display: inline-flex; gap: 4px; margin: 0 auto; }
 .style-switch button { background: transparent; border: 1px solid var(--line-deep); border-radius: var(--r-pill); color: var(--muted); cursor: pointer; padding: 8px 12px; }
 .style-switch button.is-active { background: var(--plum); border-color: var(--plum); color: #fff; }
@@ -452,6 +458,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .share-message { color: var(--muted); font-size: 13px; text-align: center; }
 .settings-list { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
 .settings-options { margin-top: 14px; }
+.settings-account, .settings-partner { display: flex; flex-direction: column; gap: 4px; margin: 12px 0 16px; }
+.settings-account span, .settings-partner small { color: var(--muted); font-size: 12px; }
+.settings-partner { border-top: 1px solid var(--line); padding-top: 14px; }
+.settings-invite-url { background: rgba(255,255,255,.55); border-radius: var(--r-sm); display: block; font-size: 11px; margin: 12px 0; overflow-wrap: anywhere; padding: 8px; }
 @media (min-width: 681px) { .app-shell { margin: 0 auto; max-width: 680px; } .w-tabbar { left: 50%; transform: translateX(-50%); } }
 @media (max-width: 420px) { .game-hud__actions { gap: 0; } .hud-action { min-width: 37px; } .need-strip { gap: 5px; } .wardrobe-grid { grid-template-columns: 1fr; } .wardrobe-item { align-items: center; display: grid; gap: 8px; grid-template-columns: 54px 1fr auto; text-align: left; } .wardrobe-item__icon { grid-row: span 2; height: 48px; margin: 0; width: 48px; } .wardrobe-item small { margin: 0; min-height: 0; } .wardrobe-item .w-button, .wardrobe-item .unlock-badge { grid-column: 3; grid-row: span 2; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; } }

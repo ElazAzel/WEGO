@@ -12,7 +12,7 @@ export type ApiSession = { user: { id: string; name: string; tone: "coral" | "li
 export function isApiEnabled(): boolean {
   // Telegram can open the hosted demo before a backend is configured. Keep that
   // path local-first instead of making every Telegram launch call a missing /v1.
-  return import.meta.env.VITE_API_ENABLED === "true" || (import.meta.env.DEV && getTelegramContext().isTelegram);
+  return (import.meta.env.VITE_API_ENABLED === "true" && Boolean(import.meta.env.VITE_API_URL)) || (import.meta.env.DEV && getTelegramContext().isTelegram);
 }
 
 export function apiUrl(path: string): string {
@@ -34,6 +34,16 @@ export async function authenticateTelegram(): Promise<ApiSession["user"]> {
   // where an HttpOnly cookie cannot be shared with the Vercel origin.
   setToken(result.token);
   return result.user;
+}
+
+export async function acceptInvite(token: string): Promise<{ space: { id: string; name: string } }> {
+  return apiFetch<{ space: { id: string; name: string } }>(`/invitations/${encodeURIComponent(token)}/accept`, { method: "POST" });
+}
+
+export async function logoutTelegram(): Promise<void> {
+  try { await apiFetch<{ ok: true }>("/auth/logout", { method: "POST" }); } finally {
+    try { window.sessionStorage.removeItem(sessionKey); } catch { /* session storage is optional */ }
+  }
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}, withSession = true): Promise<T> {

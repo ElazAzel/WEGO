@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { StoryEntry, WorldSnapshot } from "@wego/domain";
 import { AppShell } from "../components/layout/AppShell";
@@ -18,46 +18,64 @@ import { HistoryPage } from "../features/life/HistoryPage";
 import { PetPage } from "../features/life/PetPage";
 import { NotificationsPage } from "../features/life/NotificationsPage";
 import { useAppStore, type AppToday } from "../store/use-app-store";
-import { apiFetch, authenticateTelegram, isApiEnabled } from "../lib/api-client";
+import { acceptInvite, apiFetch, authenticateTelegram, isApiEnabled } from "../lib/api-client";
 import { useSpaceEvents } from "../hooks/useSpaceEvents";
 import { registerWegoServiceWorker } from "../lib/pwa";
+import { getJoinToken, isTelegram } from "../lib/telegram";
 
 export function App() {
   useEffect(() => { void registerWegoServiceWorker(); }, []);
+  const remoteMode = isApiEnabled();
+  const [remoteStatus, setRemoteStatus] = useState<"idle" | "loading" | "ready" | "error">(remoteMode ? "loading" : "ready");
+  const [remoteError, setRemoteError] = useState<string | null>(null);
   const hasSpace = Boolean(useAppStore((state) => state.space));
   const spaceId = useAppStore((state) => state.space?.id ?? null);
   const hydrate = useAppStore((state) => state.hydrate);
-  const refreshSharedWorld = useCallback(() => {
+  const refreshSharedState = useCallback(() => {
     if (!isApiEnabled()) return;
-    void apiFetch<{ world: WorldSnapshot; revision: number }>("/world")
-      .then((record) => hydrate({ world: record.world, worldRevision: record.revision }))
-      .catch(() => undefined);
+    const currentSpace = useAppStore.getState().space;
+    if (!currentSpace) return;
+    void Promise.all([
+      apiFetch<BootstrapResponse>("/bootstrap"),
+      apiFetch<RemoteToday>(`/spaces/${currentSpace.id}/today`),
+      apiFetch<{ entries: StoryEntry[] }>(`/spaces/${currentSpace.id}/story`),
+    ]).then(([bootstrap, today, story]) => hydrate({ space: bootstrap.activeSpace, partner: bootstrap.partner, today: mapToday(today), story: story.entries, world: bootstrap.world, worldRevision: bootstrap.worldRevision })).catch(() => undefined);
   }, [hydrate]);
-  useSpaceEvents(spaceId, refreshSharedWorld);
+  useSpaceEvents(spaceId, refreshSharedState);
   useEffect(() => {
-    if (!isApiEnabled()) return;
+    if (!remoteMode) return;
     let mounted = true;
     void (async () => {
       try {
+        if (!isTelegram()) throw new Error("Откройте WEGO из Telegram, чтобы войти в аккаунт.");
         const user = await authenticateTelegram();
-        const bootstrap = await apiFetch<BootstrapResponse>("/bootstrap");
+        let bootstrap = await apiFetch<BootstrapResponse>("/bootstrap");
+        const joinToken = getJoinToken();
+        if (!bootstrap.activeSpace && joinToken) {
+          await acceptInvite(joinToken);
+          bootstrap = await apiFetch<BootstrapResponse>("/bootstrap");
+        }
         if (!mounted) return;
-        if (!bootstrap.activeSpace) { hydrate({ space: null, me: user, partner: null, world: bootstrap.world, worldRevision: bootstrap.worldRevision }); return; }
+        if (!bootstrap.activeSpace) { hydrate({ space: null, me: user, partner: null, world: bootstrap.world, worldRevision: bootstrap.worldRevision }); setRemoteStatus("ready"); return; }
         const [today, story] = await Promise.all([
           apiFetch<RemoteToday>(`/spaces/${bootstrap.activeSpace.id}/today`),
           apiFetch<{ entries: StoryEntry[] }>(`/spaces/${bootstrap.activeSpace.id}/story`),
         ]);
         if (!mounted) return;
         hydrate({ space: bootstrap.activeSpace, me: user, partner: bootstrap.partner, today: mapToday(today), story: story.entries, world: bootstrap.world, worldRevision: bootstrap.worldRevision });
-      } catch {
-        // Local-first state remains available when API is temporarily unreachable.
+        setRemoteStatus("ready");
+      } catch (error) {
+        if (!mounted) return;
+        setRemoteError(error instanceof Error ? error.message : "Не удалось подключиться к WEGO.");
+        setRemoteStatus("error");
       }
     })();
     return () => { mounted = false; };
-  }, [hydrate]);
+  }, [hydrate, remoteMode]);
+  if (remoteMode && remoteStatus !== "ready") return <RemoteGate status={remoteStatus} error={remoteError} onRetry={() => window.location.reload()} />;
   return (
     <Routes>
-      <Route path="/onboarding/*" element={<OnboardingPage />} />
+      <Route path="/onboarding/*" element={hasSpace ? <Navigate to="/wego" replace /> : <OnboardingPage />} />
       <Route element={<GuardedShell hasSpace={hasSpace} />}>
         <Route path="/wego" element={<HomePage />} />
         <Route path="/calendar" element={<CalendarPage />} />
@@ -78,6 +96,10 @@ export function App() {
       <Route path="*" element={<Navigate to={hasSpace ? "/wego" : "/onboarding"} replace />} />
     </Routes>
   );
+}
+
+function RemoteGate({ status, error, onRetry }: { status: "idle" | "loading" | "error"; error: string | null; onRetry: () => void }) {
+  return <div className="remote-gate"><div className="w-mono-caps">WEGO / TELEGRAM</div><h1 className="w-serif">{status === "error" ? "Не удалось войти" : "Открываем ваш мир"}</h1><p>{error ?? "Подтверждаем Telegram-аккаунт и загружаем общую комнату."}</p>{status === "error" && <button type="button" onClick={onRetry}>Повторить</button>}</div>;
 }
 
 type ApiUser = { id: string; name: string; tone: "coral" | "lilac" };

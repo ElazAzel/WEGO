@@ -22,7 +22,12 @@ export function getTelegramContext() {
 }
 
 export function isTelegram(): boolean { return Boolean(window.Telegram?.WebApp); }
-export function getStartParam(): string { return window.Telegram?.WebApp?.initDataUnsafe?.start_param ?? ""; }
+export function getStartParam(): string { return window.Telegram?.WebApp?.initDataUnsafe?.start_param?.trim() ?? ""; }
+
+export function getJoinToken(): string | null {
+  const value = getStartParam();
+  return value.startsWith("join_") && value.length > 5 ? value.slice(5) : null;
+}
 
 export function initializeTelegram(): void {
   const webApp = window.Telegram?.WebApp;

@@ -1,8 +1,8 @@
-# WEGO: Git, Vercel и Telegram
+# WEGO: GitHub Pages, API и Telegram
 
 ## Что уже работает
 
-Vercel публикует веб-MVP с тем же сценарием, что на локальном адресе:
+GitHub Pages публикует веб-MVP с тем же сценарием, что на локальном адресе:
 
 - общий экран «Мы»;
 - календарь с месяцем, неделей и днём;
@@ -12,9 +12,9 @@ Vercel публикует веб-MVP с тем же сценарием, что �
 - центр уведомлений и PWA-кеш;
 - локальное сохранение данных в браузере.
 
-Пока не заданы `VITE_API_ENABLED=true` и `VITE_API_URL`, приложение работает в local-first режиме. Это полноценный демонстрационный MVP, но изменения между разными устройствами и пользователями не синхронизируются. Для общей пары нужен отдельный запущенный API и PostgreSQL.
+Пока не заданы GitHub variables `WEGO_API_ENABLED=true` и `WEGO_API_URL`, приложение работает в local-first режиме. Это полноценный демонстрационный MVP, но изменения между разными устройствами и пользователями не синхронизируются. Для общей пары нужен отдельный запущенный API и PostgreSQL.
 
-## Публикация фронтенда на Vercel
+## Публикация фронтенда на GitHub Pages
 
 1. Создайте пустой репозиторий GitHub и добавьте его как `origin`:
 
@@ -23,19 +23,19 @@ Vercel публикует веб-MVP с тем же сценарием, что �
    git push -u origin codex/production-foundation
    ```
 
-2. В Vercel выберите `Add New → Project`, подключите репозиторий и оставьте корень проекта корнем репозитория. Файл `vercel.json` уже задаёт установку pnpm, сборку и папку `apps/web/dist`.
+2. Workflow `.github/workflows/deploy-pages.yml` собирает `apps/web` и публикует `apps/web/dist` после push в `main`.
 
 3. Для demo-варианта не добавляйте API-переменные. После деплоя проверьте `/wego`, `/calendar`, `/tasks`, `/plans`, `/more`.
 
-4. Для серверного режима добавьте в Environment Variables Vercel:
+4. Для серверного режима добавьте в GitHub repository variables:
 
    ```text
-   VITE_API_ENABLED=true
-   VITE_API_URL=https://<api-host>/v1
+   WEGO_API_ENABLED=true
+   WEGO_API_URL=https://<api-host>/v1
    VITE_TELEGRAM_BOT_USERNAME=<bot_username>
    ```
 
-   После изменения `VITE_*` нужен новый deploy: это переменные сборки.
+   Workflow передаст их в `VITE_API_ENABLED` и `VITE_API_URL`. После изменения нужен новый deploy: это переменные сборки.
 
 ## API и синхронизация
 
@@ -52,7 +52,7 @@ set PORT=8787
 pnpm --filter @wego/api dev
 ```
 
-На Linux/macOS вместо `set` используйте `export`. В `WEB_ORIGIN` укажите точный адрес Vercel без завершающего `/`. В production API отвергает пустой Telegram `initData`, использует PostgreSQL и требует `TELEGRAM_BOT_TOKEN`, `NOTE_ENCRYPTION_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `DATABASE_URL` и `WEB_ORIGIN`.
+На Linux/macOS вместо `set` используйте `export`. В `WEB_ORIGIN` укажите `https://elazazel.github.io` без завершающего `/`. В production API отвергает пустой Telegram `initData`, использует PostgreSQL и требует `TELEGRAM_BOT_TOKEN`, `NOTE_ENCRYPTION_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `DATABASE_URL` и `WEB_ORIGIN`.
 
 ## Подключение к Telegram
 
@@ -61,7 +61,7 @@ pnpm --filter @wego/api dev
 3. Задайте username бота в `TELEGRAM_BOT_USERNAME` и в `VITE_TELEGRAM_BOT_USERNAME`.
 4. Для Mini App используйте один из вариантов BotFather:
 
-   - `/newapp` → выберите бота → название приложения → короткое имя → укажите HTTPS-адрес Vercel;
+   - `/newapp` → выберите бота → название приложения → короткое имя → укажите HTTPS-адрес GitHub Pages;
    - либо `/setmenubutton` → выберите бота → `Web App` → укажите подпись и HTTPS-адрес.
 
 5. Откройте приложение через кнопку бота. Telegram передаст `window.Telegram.WebApp.initData`; API проверит подпись этим же bot token. Не используйте ссылку `http://localhost` и не вставляйте токен бота во фронтенд.
@@ -77,4 +77,4 @@ pnpm --filter @wego/api dev
 - После отзыва доступа к календарю данные не удаляются из личного календаря.
 - Секреты отсутствуют в Git и в клиентских `VITE_*`, кроме публичного URL API и username бота.
 
-Если нужен только быстрый просмотр интерфейса, достаточно Vercel demo. Если нужен настоящий общий аккаунт пары, сначала разверните API/PostgreSQL и только затем включите `VITE_API_ENABLED`.
+Если нужен только быстрый просмотр интерфейса, достаточно GitHub Pages demo. Если нужен настоящий общий аккаунт пары, сначала разверните API/PostgreSQL и только затем включите `WEGO_API_ENABLED=true`.

@@ -5,6 +5,7 @@ import { wegoAsset } from "../../lib/asset";
 import { haptic, isTelegram, openTelegramShare } from "../../lib/telegram";
 import { useAppStore } from "../../store/use-app-store";
 import { useUiStore } from "../../store/use-ui-store";
+import { apiFetch, isApiEnabled } from "../../lib/api-client";
 import { LivingRoomScene } from "../world/LivingRoomScene";
 import { GameHud } from "../world/GameHud";
 import { HomeSummary } from "./HomeSummary";
@@ -32,7 +33,13 @@ export function HomePage() {
 type Props = { space: NonNullable<ReturnType<typeof useAppStore.getState>["space"]>; me: NonNullable<ReturnType<typeof useAppStore.getState>["me"]>; partner: ReturnType<typeof useAppStore.getState>["partner"]; today: ReturnType<typeof useAppStore.getState>["today"]; art: string; myAnswered: boolean; bothAnswered: boolean; openSheet: () => void; openReveal: () => void; setPartnerDemo?: () => void; nextEvent?: { title: string; dateLabel: string } };
 
 function HomeV1({ space, me, partner, today, art, myAnswered, bothAnswered, openSheet, openReveal, setPartnerDemo, nextEvent }: Props) {
-  function shareInvite() { const url = `${window.location.origin}/join/local-preview`; if (isTelegram()) openTelegramShare(url, "Присоединись к нашей комнате WEGO"); else void navigator.clipboard?.writeText(url); }
+  async function shareInvite() {
+    let url = `https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "wego_app_bot"}/app?startapp=join_${space.id}`;
+    if (isApiEnabled()) {
+      try { const invitation = await apiFetch<{ url: string }>(`/spaces/${space.id}/invitations`, { method: "POST" }); url = invitation.url; } catch { return; }
+    }
+    if (isTelegram()) openTelegramShare(url, "Присоединись к нашей комнате WEGO"); else void navigator.clipboard?.writeText(url);
+  }
   return <div className="app-page home-page"><PageHeader eyebrow="Our Space" title={space.name} description="Маленький шаг для нас." action={<WAvatar name={me.name} tone={me.tone} size={42} />} /><HomeSummary daysTogether={space.daysAlive} nextEvent={nextEvent ?? { title: "Добавьте вашу ближайшую дату", dateLabel: "Откройте календарь" }} /><div className="screen-padding"><LivingRoomScene room={space.room} style={space.style} stage={space.stage} daysAlive={space.daysAlive} character={space.character} /></div><div className="screen-padding"><GameHud /></div><div className="participants screen-padding"><Participant person={me} mood={today.myMood} energy={today.myEnergy} answered={myAnswered} /><Participant person={partner} mood={today.partnerMood} energy={today.partnerEnergy} answered={Boolean(today.partnerMood)} /></div>{!partner && <div className="screen-padding"><WCard tone="yellow"><div className="w-serif" style={{ fontSize: 22 }}>Второй участник ещё не присоединился</div><p>Перешлите инвайт-ссылку, чтобы Wego ожил для вас обоих.</p><WButton variant="secondary" onClick={shareInvite}>Переслать ссылку</WButton></WCard></div>}<div className="screen-padding">{!myAnswered ? <WButton size="xl" onClick={() => { haptic(); openSheet(); }}>Отметиться сегодня →</WButton> : <WCard tone="mint" className="ready-card"><div><strong>Твоя часть готова</strong><small>{partner ? `Осталась догадка о том, как ${partner.name}` : "Ждём второго участника"}</small></div><Icon name="check" /></WCard>}</div><div className="screen-padding"><WCard tone={bothAnswered ? "lilac" : "paper"}><div className="w-mono-caps">Сегодняшний Reveal</div><div className="w-serif card-title">{bothAnswered ? "Готов открыться" : "Ждём вас обоих"}</div><p>{bothAnswered ? "Вы оба ответили — можно заглянуть." : "Откроется, когда вы оба ответите."}</p>{bothAnswered && <WButton variant="lilac" size="lg" onClick={() => { haptic(); openReveal(); }}>Открыть Reveal</WButton>}</WCard></div><div className="screen-padding"><WCard tone="cream" className="insight-card"><img src={art} alt="" /><div><div className="w-mono-caps">Wego заметил</div><p>Вы чаще выбираете спокойные вечера дома.</p></div></WCard></div>{import.meta.env.DEV && setPartnerDemo && <div className="screen-padding"><button type="button" className="dev-link" onClick={setPartnerDemo}>Локальный preview: ответ партнёра</button></div>}</div>;
 }
 

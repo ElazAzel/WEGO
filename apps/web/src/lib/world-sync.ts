@@ -1,4 +1,5 @@
 import type { WorldAction, WorldSnapshot } from "@wego/domain";
+import type { SparkWallet } from "@wego/domain";
 
 export interface WorldCommandPayload {
   commandId: string;
@@ -10,6 +11,7 @@ export interface WorldCommandResponse {
   world: WorldSnapshot;
   revision: number;
   replayed: boolean;
+  wallet?: SparkWallet;
 }
 
 export function createWorldCommand(action: WorldAction, expectedRevision: number): WorldCommandPayload {

@@ -67,4 +67,8 @@ export class InMemoryWorldState {
     this.records.set(key, record);
     return record;
   }
+
+  restore(key: string, record: VersionedWorld): void {
+    this.records.set(key, { world: normalizeWorld(record.world), revision: Math.max(0, record.revision) });
+  }
 }
