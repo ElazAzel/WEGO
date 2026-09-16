@@ -1,0 +1,14 @@
+{
+  "name": "@wego/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch dist/server.cjs",
+    "build": "node ../../node_modules/esbuild/bin/esbuild src/server.ts --bundle --platform=node --format=cjs --outfile=dist/server.cjs --external:fastify --external:zod --external:pg && node ../../node_modules/esbuild/bin/esbuild src/worker.ts --bundle --platform=node --format=esm --outfile=dist/worker.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": { "@wego/domain": "workspace:*", "fastify": "^5.2.0", "zod": "^3.24.1" }
+}

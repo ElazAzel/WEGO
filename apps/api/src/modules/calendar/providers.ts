@@ -1,0 +1,19 @@
+import { providerCapabilities, type CalendarAdapter, type CalendarProvider, type CanonicalCalendarEvent, type ExternalCalendarEvent } from "./types";
+
+type Requester = (url: string, init?: RequestInit) => Promise<Response>;
+class HttpAdapter implements CalendarAdapter {
+  constructor(private readonly provider: CalendarProvider, private readonly request: Requester, private readonly baseUrl: string, private readonly token: string) {}
+  capabilities() { return providerCapabilities[this.provider]; }
+  async discoverCalendars() { const response = await this.request(`${this.baseUrl}/calendars`, { headers: { Authorization: `Bearer ${this.token}` } }); if (!response.ok) throw new Error(`CALENDAR_DISCOVERY_${response.status}`); const json = await response.json() as { items?: Array<{ id: string; summary?: string; name?: string; accessRole?: string }> }; return (json.items ?? []).map(item => ({ id: item.id, name: item.summary ?? item.name ?? item.id, canWrite: item.accessRole === "owner" || item.accessRole === "writer" })); }
+  async readChanges(cursor: string | null) { const url = cursor ? `${this.baseUrl}/events?syncToken=${encodeURIComponent(cursor)}` : `${this.baseUrl}/events`; const response = await this.request(url, { headers: { Authorization: `Bearer ${this.token}` } }); if (!response.ok) throw new Error(`CALENDAR_READ_${response.status}`); const json = await response.json() as { items?: ExternalCalendarEvent[]; nextSyncToken?: string; nextPageToken?: string }; return { events: json.items ?? [], deletedExternalIds: [], nextCursor: json.nextSyncToken ?? json.nextPageToken ?? cursor }; }
+  async write(event: CanonicalCalendarEvent, previous: ExternalCalendarEvent | null) { const method = previous ? "PUT" : "POST"; const url = previous ? `${this.baseUrl}/events/${encodeURIComponent(previous.externalId)}` : `${this.baseUrl}/events`; const response = await this.request(url, { method, headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json", ...(previous?.etag ? { "If-Match": previous.etag } : {}) }, body: JSON.stringify({ id: previous?.externalId, summary: event.title, start: { dateTime: event.start, timeZone: event.timezone }, end: { dateTime: event.end, timeZone: event.timezone }, recurrence: event.recurrence }) }); if (response.status === 412) throw new Error("CALENDAR_CONFLICT"); if (!response.ok) throw new Error(`CALENDAR_WRITE_${response.status}`); return await response.json() as ExternalCalendarEvent; }
+  async remove(event: ExternalCalendarEvent) { const response = await this.request(`${this.baseUrl}/events/${encodeURIComponent(event.externalId)}`, { method: "DELETE", headers: { Authorization: `Bearer ${this.token}`, ...(event.etag ? { "If-Match": event.etag } : {}) } }); if (!response.ok && response.status !== 404) throw new Error(`CALENDAR_DELETE_${response.status}`); }
+  async renewSubscription() { return this.capabilities().supportsWebhooks ? { expiresAt: new Date(Date.now() + 24 * 3600000).toISOString() } : null; }
+}
+export function googleAdapter(request: Requester, token: string) { return new HttpAdapter("google", request, "https://www.googleapis.com/calendar/v3", token); }
+export function outlookAdapter(request: Requester, token: string) { return new HttpAdapter("outlook", request, "https://graph.microsoft.com/v1.0/me/calendarView", token); }
+
+export function calDavAdapter(provider: "icloud" | "yandex", request: Requester, endpoint: string, appPassword: string): CalendarAdapter {
+  const unsupported = (operation: string): never => { throw new Error(`${provider.toUpperCase()}_CALDAV_${operation}_REQUIRES_TSDAV`); };
+  return { capabilities: () => providerCapabilities[provider], discoverCalendars: async () => unsupported("DISCOVERY"), readChanges: async () => unsupported("READ"), write: async (_event, _previous) => unsupported("WRITE"), remove: async _event => unsupported("DELETE"), renewSubscription: async () => null };
+}

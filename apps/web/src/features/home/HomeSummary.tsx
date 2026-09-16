@@ -1,0 +1,5 @@
+import { WCard } from "@wego/ui";
+
+export function HomeSummary({ daysTogether, nextEvent }: { daysTogether: number; nextEvent: { title: string; dateLabel: string } }) {
+  return <section className="home-summary screen-padding" aria-label="Сводка нашей жизни"><WCard tone="lilac" className="home-summary__hero"><div className="w-mono-caps">Мы · общий экран</div><div className="home-summary__counter"><strong>{daysTogether.toLocaleString("ru-RU")}</strong><span>дней вместе</span></div><div className="home-summary__stats"><div><strong>9</strong><span>желаний<br />исполнено</span></div><div><strong>2</strong><span>поездки<br />вдвоём</span></div><div><strong>4</strong><span>плана<br />закрыто</span></div><div><strong>19</strong><span>файлов<br />добавлено</span></div></div></WCard><WCard tone="paper" className="home-summary__next"><div className="home-summary__date"><strong>24</strong><span>АВГ</span></div><div><div className="w-mono-caps">Скоро</div><div className="life-title">{nextEvent.title}</div><small>{nextEvent.dateLabel}</small></div><span className="record-dot" /></WCard></section>;
+}

@@ -1,0 +1,2 @@
+export class ApiError extends Error { constructor(public statusCode: number, public code: string, message: string, public details?: unknown) { super(message); } }
+export function errorBody(error: unknown, requestId: string, details?: unknown) { const known = error instanceof ApiError ? error : null; return { error: { code: known?.code ?? "INTERNAL_ERROR", message: known?.message ?? "Что-то пошло не так", requestId, ...(details === undefined ? {} : { details }) } }; }
