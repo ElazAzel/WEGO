@@ -22,7 +22,7 @@ jobs:
       # Keep Pages on the public deployment hostname. The team alias is
       # protected by Vercel Authentication and cannot serve Telegram users.
       VITE_API_URL: ${{ vars.WEGO_API_PUBLIC_URL || 'https://wego-api-alpha.vercel.app/v1' }}
-      VITE_API_ENABLED: ${{ vars.WEGO_API_ENABLED || 'false' }}
+      VITE_API_ENABLED: ${{ vars.WEGO_API_ENABLED || 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
