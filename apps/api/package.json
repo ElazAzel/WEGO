@@ -10,5 +10,5 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
-  "dependencies": { "@wego/domain": "workspace:*", "fastify": "^5.2.0", "zod": "^3.24.1" }
+  "dependencies": { "@wego/domain": "workspace:*", "fastify": "^5.2.0", "pg": "8.16.3", "zod": "^3.24.1" }
 }
