@@ -189,4 +189,4 @@ export function buildServer(options: BuildServerOptions = {}) {
   return app;
 }
 
-if (process.env.NODE_ENV !== "test") buildServer().listen({ port: config.port, host: config.host }).catch((error) => { console.error(error); process.exit(1); });
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) buildServer().listen({ port: config.port, host: config.host }).catch((error) => { console.error(error); process.exit(1); });
