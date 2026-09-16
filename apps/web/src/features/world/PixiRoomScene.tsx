@@ -124,7 +124,7 @@ export default function PixiRoomScene({ room, character, characterLine, world, o
         {visibleIds.has("lamp") && world.environment.lamp === "on" && <LampGlow paper={paperLamp} />}
         {visibleIds.has("table") && <InteractiveSprite id="table" texture={textures.table} onInteract={interact} />}
         {visibleIds.has("table") && showTea && <pixiSprite texture={textures.tea} x={418} y={382} width={105} height={84} zIndex={36} eventMode="none" />}
-        {visibleIds.has("wego") && <AnimatedWego texture={textures.wego} state={wegoState} target={wegoTarget} onInteract={() => interact("wego")} />}
+        {visibleIds.has("wego") && <AnimatedWego texture={textures.wego} state={wegoState} target={wegoTarget} outfit={world.equippedWegoItems.outfit} accessory={world.equippedWegoItems.accessory} emotion={world.equippedWegoItems.emotion} onInteract={() => interact("wego")} />}
       </pixiContainer>
     </Application>
     <div className="pixi-room-runtime__speech" role="status">{characterLine}</div>
@@ -150,8 +150,8 @@ function WindowEntity({ closed, texture, onInteract }: { closed: boolean; textur
   </pixiContainer>;
 }
 
-function AnimatedWego({ texture, state, target, onInteract }: { texture: Texture; state: WegoRuntimeState; target: { x: number; y: number }; onInteract: () => void }) {
-  const sprite = useRef<Sprite | null>(null);
+function AnimatedWego({ texture, state, target, outfit, accessory, emotion, onInteract }: { texture: Texture; state: WegoRuntimeState; target: { x: number; y: number }; outfit: string; accessory: string | null; emotion: string | null; onInteract: () => void }) {
+  const sprite = useRef<Container | null>(null);
   useTick((ticker) => {
     const current = sprite.current;
     if (!current) return;
@@ -163,10 +163,25 @@ function AnimatedWego({ texture, state, target, onInteract }: { texture: Texture
     current.y += breathing * 0.08;
     const frame = wegoVisualFrame(state, seconds);
     current.rotation = frame.rotation;
-    current.width = frame.width;
-    current.height = frame.height;
+    current.scale.set(frame.width / 176);
   });
-  return <pixiSprite ref={sprite} texture={texture} anchor={0.5} x={home.x} y={home.y} width={176} height={176} zIndex={40} eventMode="static" cursor="pointer" onPointerTap={onInteract} />;
+  return <pixiContainer ref={sprite} x={home.x} y={home.y} zIndex={40} eventMode="static" cursor="pointer" onPointerTap={onInteract}>
+    {outfit === "night-hoodie" && <pixiGraphics eventMode="none" draw={(graphics) => { graphics.clear(); graphics.circle(0, -6, 77); graphics.stroke({ color: 0x564276, width: 18, alpha: 0.92 }); }} />}
+    <pixiSprite texture={texture} anchor={0.5} x={0} y={0} width={176} height={176} />
+    {outfit === "sunny-scarf" && <pixiGraphics eventMode="none" draw={(graphics) => { graphics.clear(); graphics.roundRect(-53, 18, 106, 20, 10); graphics.fill({ color: 0xff8f75, alpha: 0.96 }); graphics.roundRect(28, 30, 19, 49, 9); graphics.fill({ color: 0xffb05e, alpha: 0.96 }); }} />}
+    {accessory === "sunny-pin" && <pixiGraphics eventMode="none" draw={(graphics) => { graphics.clear(); graphics.circle(47, 5, 12); graphics.fill({ color: 0xffd45c, alpha: 1 }); graphics.circle(47, 5, 4); graphics.fill({ color: 0xfff6c2, alpha: 1 }); }} />}
+    {emotion === "heart-bubble-effect" && <HeartBubbles />}
+  </pixiContainer>;
+}
+
+function HeartBubbles() {
+  const graphics = useRef<Graphics | null>(null);
+  useTick((ticker) => {
+    if (!graphics.current) return;
+    graphics.current.y = Math.sin(ticker.lastTime / 480) * 5;
+    graphics.current.alpha = 0.74 + Math.sin(ticker.lastTime / 350) * 0.18;
+  });
+  return <pixiGraphics ref={graphics} eventMode="none" draw={(value) => { value.clear(); value.circle(-67, -55, 9); value.circle(68, -73, 7); value.circle(78, -40, 4); value.fill({ color: 0xff7180, alpha: 0.85 }); }} />;
 }
 
 function LampGlow({ paper }: { paper: boolean }) {

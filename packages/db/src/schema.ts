@@ -14,6 +14,12 @@ export const tableNames = [
   "reward_action_guards",
   "world_snapshots",
   "world_memories",
+  "sessions",
+  "world_commands",
+  "shared_plans",
+  "pair_game_sessions",
+  "foundation_records",
+  "change_journal",
 ] as const;
 
 export type TableName = (typeof tableNames)[number];
@@ -22,7 +28,7 @@ export type TableName = (typeof tableNames)[number];
  * The migration is kept as the deployable source of truth in /db/migrations.
  * This metadata gives the API and migration tooling one typed package boundary.
  */
-export const schemaVersion = 3;
+export const schemaVersion = 5;
 
 export const sensitiveColumns = [
   "daily_checkins.note_ciphertext",

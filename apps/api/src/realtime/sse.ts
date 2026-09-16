@@ -1,5 +1,5 @@
 export interface SpaceEvent {
-  type: "partner_joined" | "checkin_submitted" | "guess_saved" | "story_saved" | "day_changed";
+  type: "partner_joined" | "checkin_submitted" | "guess_saved" | "story_saved" | "day_changed" | "world_changed";
   spaceId: string;
   date?: string;
   version: number;

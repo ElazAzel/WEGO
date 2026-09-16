@@ -6,7 +6,7 @@ export const needIds = ["hunger", "energy", "joy", "connection", "comfort"] as c
 export type WegoNeedId = (typeof needIds)[number];
 export type WegoMood = "sleepy" | "cozy" | "curious" | "playful" | "loved";
 export type RoomObjectId = "bowl" | "toy" | "plant" | "journal" | "clutter" | "lamp" | "shelf" | "window" | "table";
-export type WegoActionType = "feed" | "pet" | "play" | "tidy" | "decorate" | "outfit" | "plan_complete" | "memory" | "room_interact" | "set_vibe" | "ritual" | "pulse" | "game_answer" | "quest_claim" | "move_in_start" | "move_in_place";
+export type WegoActionType = "feed" | "pet" | "play" | "tidy" | "decorate" | "outfit" | "plan_create" | "plan_complete" | "memory" | "room_interact" | "set_vibe" | "ritual" | "pulse" | "game_answer" | "quest_claim" | "move_in_start" | "move_in_place";
 export const ritualIds = ["tea", "blanket", "dance", "photo", "snack", "hug"] as const;
 export type RitualId = (typeof ritualIds)[number];
 
@@ -38,6 +38,12 @@ export interface WegoAction {
   pulseKind?: PartnerPulseKind;
   gameAnswer?: RoomVibe;
   moveInItem?: MoveInItemId;
+  planId?: string;
+  title?: string;
+  date?: string;
+  memoryId?: string;
+  body?: string;
+  memoryKind?: MemoryEntry["kind"];
   at: string;
 }
 
@@ -96,7 +102,7 @@ export interface WorldActionResult {
 
 export const WegoActionSchema = z.object({
   id: z.string().min(1).max(120),
-  type: z.enum(["feed", "pet", "play", "tidy", "decorate", "outfit", "plan_complete", "memory", "room_interact", "set_vibe", "ritual", "pulse", "game_answer", "quest_claim", "move_in_start", "move_in_place"]),
+  type: z.enum(["feed", "pet", "play", "tidy", "decorate", "outfit", "plan_create", "plan_complete", "memory", "room_interact", "set_vibe", "ritual", "pulse", "game_answer", "quest_claim", "move_in_start", "move_in_place"]),
   actorId: z.string().min(1).max(120),
   objectId: z.enum(["bowl", "toy", "plant", "journal", "clutter", "lamp", "shelf", "window", "table"]).optional(),
   interaction: z.enum(["toggle", "toggle-curtains", "serve-tea", "collect-tea", "water"]).optional(),
@@ -106,6 +112,12 @@ export const WegoActionSchema = z.object({
   pulseKind: z.enum(pulseKinds).optional(),
   gameAnswer: z.enum(roomVibes).optional(),
   moveInItem: z.enum(moveInItemIds).optional(),
+  planId: z.string().min(1).max(120).optional(),
+  title: z.string().trim().min(1).max(120).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  memoryId: z.string().min(1).max(120).optional(),
+  body: z.string().trim().min(1).max(1000).optional(),
+  memoryKind: z.enum(["plan", "game", "care", "note"]).optional(),
   at: z.string().datetime(),
 });
 

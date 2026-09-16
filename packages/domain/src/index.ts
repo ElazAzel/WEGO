@@ -11,3 +11,5 @@ export * from "./room-state";
 export * from "./items";
 export * from "./world-reducer";
 export * from "./economy";
+export * from "./life";
+export * from "./pet";

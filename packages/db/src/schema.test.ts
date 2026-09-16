@@ -3,7 +3,7 @@ import { schemaVersion, sensitiveColumns, tableNames } from "./schema";
 
 describe("database contract", () => {
   it("exposes the current migration tables", () => {
-    expect(schemaVersion).toBe(3);
+    expect(schemaVersion).toBe(5);
     expect(tableNames).toEqual([
       "users",
       "spaces",
@@ -20,6 +20,12 @@ describe("database contract", () => {
       "reward_action_guards",
       "world_snapshots",
       "world_memories",
+      "sessions",
+      "world_commands",
+      "shared_plans",
+      "pair_game_sessions",
+      "foundation_records",
+      "change_journal",
     ]);
   });
 

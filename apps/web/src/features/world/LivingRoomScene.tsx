@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
-import { welcomeBackMessage } from "@wego/domain";
+import { petIntent, petReply, welcomeBackMessage } from "@wego/domain";
 import type { RoomObjectId, RoomInteraction, WegoStage, WegoStyle, WorldSnapshot } from "@wego/domain";
 import { roomAsset, roomBackgroundAsset } from "../../lib/asset";
 import { haptic } from "../../lib/telegram";
@@ -37,6 +37,8 @@ export function LivingRoomScene({ room, style, stage, daysAlive, character }: Li
   const [sceneState, setSceneState] = useState<WegoSceneState>("idle");
   const [feedback, setFeedback] = useState<CozyFeedback | null>(null);
   const [characterLine, setCharacterLine] = useState("Я рядом. Давай сделаем это место нашим.");
+  const [petMessage, setPetMessage] = useState("");
+  const [recentReplyIds, setRecentReplyIds] = useState<string[]>([]);
   const welcomeBack = welcomeBackMessage(world.updatedAt);
   const fallback = getWegoSceneFallback(style, stage);
   const roomPhase = world.cozy.roomPhase;
@@ -51,6 +53,14 @@ export function LivingRoomScene({ room, style, stage, daysAlive, character }: Li
     notify(result);
     window.setTimeout(() => setSceneState("idle"), 900);
   }, [notify, performWorldAction, roomPhase]);
+  const sendPetMessage = useCallback(() => {
+    const text = petMessage.trim();
+    if (!text) return;
+    const reply = petReply({ intent: petIntent(text), mood: world.mood, energy: world.needs.energy, recentReplyIds });
+    setCharacterLine(reply.text);
+    setRecentReplyIds(ids => [...ids, reply.id].slice(-4));
+    setPetMessage("");
+  }, [petMessage, recentReplyIds, world.mood, world.needs.energy]);
   const runStartMoveIn = useCallback(() => {
     haptic("light");
     notify(startMoveIn());
@@ -99,10 +109,11 @@ export function LivingRoomScene({ room, style, stage, daysAlive, character }: Li
     return () => window.clearInterval(timer);
   }, [moveInStep, roomPhase, world.cozy.vibe]);
 
-  return <section className="living-room-scene" aria-label="Живая комната Wego" data-vibe={world.cozy.vibe} data-room-phase={roomPhase} data-renderer={roomRenderer}>
+  return <section className="living-room-scene" aria-label="Живая комната Wego" data-vibe={world.cozy.vibe} data-room-phase={roomPhase} data-renderer={roomRenderer} data-wego-outfit={world.equippedWegoItems.outfit}>
     <div className="living-room-scene__canvas">
       {roomRenderer === "pixi" ? <Suspense fallback={<CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}><PixiRoomScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} characterLine={characterLine} world={world} onWorldAction={runAction} onRoomInteraction={runRoomInteraction} /></Suspense> : <CompositeScene room={room} character={getWegoSceneAsset(style, stage, sceneState, world.equippedWegoItems.outfit)} fallback={fallback} sceneState={sceneState} characterLine={characterLine} world={world} onAction={runAction} onRoomInteraction={runRoomInteraction} onCozyAction={runCozyAction} />}
     </div>
+    <form className="pet-chat" onSubmit={event => { event.preventDefault(); sendPetMessage(); }}><label htmlFor="pet-message" className="sr-only">Написать питомцу</label><input id="pet-message" value={petMessage} onChange={event => setPetMessage(event.target.value)} placeholder="Поговорить с Вего…" maxLength={240} /><button type="submit" disabled={!petMessage.trim()}>→</button></form>
     {roomPhase === "showcase" && <RoomIntro onStart={runStartMoveIn} />}
     {roomPhase === "move-in" && <MoveInGuide step={moveInStep} onOpenRituals={() => openSheet("rituals")} onPlaceFurniture={runPlaceFirstFurniture} />}
     <span className="day-badge">День {daysAlive} · {character}</span>

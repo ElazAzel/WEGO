@@ -7,5 +7,6 @@ export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   telegramApiBaseUrl: process.env.TELEGRAM_API_BASE_URL ?? "https://api.telegram.org",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
+  webOrigin: process.env.WEB_ORIGIN ?? "",
   billingEnabled: process.env.TELEGRAM_BILLING_ENABLED === "true" && Boolean(process.env.TELEGRAM_BOT_TOKEN),
 };

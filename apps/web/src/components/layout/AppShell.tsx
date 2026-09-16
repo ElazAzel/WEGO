@@ -14,7 +14,7 @@ import { VibePickerSheet } from "../../features/world/VibePickerSheet";
 import { RitualSheet } from "../../features/world/RitualSheet";
 import { MemoryWallSheet } from "../../features/world/MemoryWall";
 
-const paths: Record<TabId, string> = { wego: "/wego", we: "/we", together: "/together", story: "/story" };
+const paths: Record<TabId, string> = { wego: "/wego", calendar: "/calendar", tasks: "/tasks", plans: "/plans", story: "/more", we: "/we", together: "/together" };
 
 export function AppShell() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export function AppShell() {
   const ui = useUiStore();
   const rolloverIfNeeded = useAppStore((state) => state.rolloverIfNeeded);
   useEffect(() => { rolloverIfNeeded(); const timer = window.setInterval(rolloverIfNeeded, 60_000); window.addEventListener("focus", rolloverIfNeeded); return () => { window.clearInterval(timer); window.removeEventListener("focus", rolloverIfNeeded); }; }, [rolloverIfNeeded]);
-  const current = (Object.entries(paths).find(([, path]) => location.pathname.startsWith(path))?.[0] ?? "wego") as TabId;
+  const current = (["/more", "/notes", "/cards", "/history", "/pet", "/notifications"].some(path => location.pathname.startsWith(path)) ? "story" : Object.entries(paths).find(([, path]) => location.pathname.startsWith(path))?.[0] ?? "wego") as TabId;
   return (
     <div className="app-shell">
       <main className="app-shell__content"><Outlet /></main>

@@ -10,7 +10,9 @@ const sessionKey = "wego-api-session-v1";
 export type ApiSession = { user: { id: string; name: string; tone: "coral" | "lilac" }; token: string };
 
 export function isApiEnabled(): boolean {
-  return import.meta.env.VITE_API_ENABLED === "true" || getTelegramContext().isTelegram;
+  // Telegram can open the hosted demo before a backend is configured. Keep that
+  // path local-first instead of making every Telegram launch call a missing /v1.
+  return import.meta.env.VITE_API_ENABLED === "true" || (import.meta.env.DEV && getTelegramContext().isTelegram);
 }
 
 function getToken(): string | null {
@@ -24,14 +26,16 @@ function setToken(token: string): void {
 export async function authenticateTelegram(): Promise<ApiSession["user"]> {
   const current = getTelegramContext();
   const result = await apiFetch<ApiSession>("/auth/telegram", { method: "POST", body: JSON.stringify({ initData: current.initData }) }, false);
-  if (!current.isTelegram) setToken(result.token);
+  // Keep the returned bearer as a fallback for cross-origin API deployments
+  // where an HttpOnly cookie cannot be shared with the Vercel origin.
+  setToken(result.token);
   return result.user;
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}, withSession = true): Promise<T> {
   const token = withSession ? getToken() : null;
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  if (options.body !== undefined && options.body !== null) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
   const response = await fetch(`${baseUrl}${path}`, { credentials: "include", ...options, headers });
   if (!response.ok) {

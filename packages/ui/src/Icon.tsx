@@ -1,10 +1,10 @@
-import { ArrowRight, Check, Clipboard, Heart, X, Share2, Circle, Users, BookOpen, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Clipboard, Heart, X, Share2, Circle, Users, BookOpen, Sparkles, CalendarDays, CheckSquare, Map, MoreHorizontal } from "lucide-react";
 import type { ComponentType } from "react";
 import type { LucideProps } from "lucide-react";
 
-export type IconName = "wego" | "we" | "together" | "story" | "copy" | "share" | "close" | "check" | "arrow-right";
+export type IconName = "wego" | "we" | "together" | "story" | "calendar" | "tasks" | "plans" | "more" | "copy" | "share" | "close" | "check" | "arrow-right";
 
-const icons = { wego: Circle, we: Heart, together: Users, story: BookOpen, copy: Clipboard, share: Share2, close: X, check: Check, "arrow-right": ArrowRight, } satisfies Record<IconName, ComponentType<LucideProps>>;
+const icons = { wego: Circle, we: Heart, together: Users, story: BookOpen, calendar: CalendarDays, tasks: CheckSquare, plans: Map, more: MoreHorizontal, copy: Clipboard, share: Share2, close: X, check: Check, "arrow-right": ArrowRight, } satisfies Record<IconName, ComponentType<LucideProps>>;
 
 export function Icon({ name, ...props }: LucideProps & { name: IconName }) {
   const Component = icons[name];

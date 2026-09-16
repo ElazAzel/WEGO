@@ -59,13 +59,34 @@ describe("API living-world economy boundary", () => {
     await app.close();
   });
 
+  it("versions world commands, replays duplicates and returns the current world on conflict", async () => {
+    const app = buildServer();
+    const auth = await app.inject({ method: "POST", url: "/v1/auth/telegram", payload: { initData: "" } });
+    const token = auth.json<{ token: string }>().token;
+    const headers = { authorization: `Bearer ${token}` };
+    const action = { type: "room_interact", objectId: "lamp", interaction: "toggle", at: "2026-08-31T10:00:00.000Z" };
+
+    const initial = await app.inject({ method: "GET", url: "/v1/world", headers });
+    const first = await app.inject({ method: "POST", url: "/v1/world/commands", headers, payload: { commandId: "lamp-command", expectedRevision: 0, action } });
+    const replay = await app.inject({ method: "POST", url: "/v1/world/commands", headers, payload: { commandId: "lamp-command", expectedRevision: 0, action } });
+    const conflict = await app.inject({ method: "POST", url: "/v1/world/commands", headers, payload: { commandId: "window-command", expectedRevision: 0, action: { ...action, objectId: "window", interaction: "toggle-curtains" } } });
+
+    expect(initial.json().revision).toBe(0);
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ revision: 1, replayed: false, world: { environment: { lamp: "off" } } });
+    expect(replay.json()).toMatchObject({ revision: 1, replayed: true, world: { environment: { lamp: "off" } } });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().error).toMatchObject({ code: "WORLD_REVISION_CONFLICT", details: { revision: 1, world: { environment: { lamp: "off" } } } });
+    await app.close();
+  });
+
   it("allows an authenticated user to equip only owned catalog items", async () => {
     const app = buildServer();
     const auth = await app.inject({ method: "POST", url: "/v1/auth/telegram", payload: { initData: "" } });
     const token = auth.json<{ token: string }>().token;
     const headers = { authorization: `Bearer ${token}` };
-    const changed = await app.inject({ method: "PUT", url: "/v1/world/equipment", headers, payload: { equippedRoomItems: { sofa: "soft-blanket" }, equippedWegoItems: { outfit: "everyday", accessory: null, emotion: null } } });
-    const rejected = await app.inject({ method: "PUT", url: "/v1/world/equipment", headers, payload: { equippedRoomItems: { wall: "rainy-window" }, equippedWegoItems: { outfit: "everyday", accessory: null, emotion: null } } });
+    const changed = await app.inject({ method: "PUT", url: "/v1/world/equipment", headers, payload: { commandId: "equip-owned", expectedRevision: 0, equippedRoomItems: { sofa: "soft-blanket" }, equippedWegoItems: { outfit: "everyday", accessory: null, emotion: null } } });
+    const rejected = await app.inject({ method: "PUT", url: "/v1/world/equipment", headers, payload: { commandId: "equip-locked", expectedRevision: 1, equippedRoomItems: { wall: "rainy-window" }, equippedWegoItems: { outfit: "everyday", accessory: null, emotion: null } } });
 
     expect(changed.statusCode).toBe(200);
     expect(changed.json().world.equippedRoomItems.sofa).toBe("soft-blanket");

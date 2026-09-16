@@ -3,6 +3,7 @@ import { canEquipItem, getCatalogItem, getSpaceDate } from "@wego/domain";
 import { applySparkTransaction, canEarnDaily, canRewardAction, checkinRewardInputs, createInitialEconomy, createInitialWorld, DAILY_SPARK_CAP, markRewardedAction, normalizeEconomy, normalizeWorld, reduceWorld } from "@wego/domain";
 import type { HomeVariant, MoodId, StoryEntry, SpaceType, Tone, WantId, EnergyId, WegoStage, WegoStyle, WorldSnapshot, EconomyState, RoomObjectId, SharedPlan, MemoryEntry, RoomInteraction, RoomSlot, WegoActionType, RoomVibe, RitualId, PartnerPulseKind, WorldAction, MoveInItemId } from "@wego/domain";
 import { readLocalState, writeLocalState } from "../lib/storage";
+import { createWorldCommand, type WorldCommandResponse } from "../lib/world-sync";
 
 export interface AppUser { id: string; name: string; tone: Tone; }
 export interface AppSpace { id: string; name: string; type: SpaceType; stage: WegoStage; character: string; daysAlive: number; style: WegoStyle; room: "warm" | "morning"; timezone: string; }
@@ -23,6 +24,7 @@ interface AppState {
   homeVariant: HomeVariant;
   revealVariant: "v1" | "v2";
   world: WorldSnapshot;
+  worldRevision: number;
   economy: EconomyState;
   setOnboarding: (space: AppSpace, me: AppUser) => void;
   updateToday: (patch: Partial<AppToday>) => void;
@@ -32,7 +34,7 @@ interface AppState {
   togglePlanned: (id: string) => void;
   answerQuestion: (answer: string) => void;
   voteWho: (id: string, vote: string) => void;
-  hydrate: (payload: Partial<Pick<AppState, "space" | "me" | "partner" | "today" | "story" | "plannedActivities" | "world" | "economy">>) => void;
+  hydrate: (payload: Partial<Pick<AppState, "space" | "me" | "partner" | "today" | "story" | "plannedActivities" | "world" | "worldRevision" | "economy">>) => void;
   rolloverIfNeeded: () => void;
   setHomeVariant: (variant: HomeVariant) => void;
   setRevealVariant: (variant: "v1" | "v2") => void;
@@ -62,7 +64,7 @@ interface AppState {
 const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const currentDate = (timezone = browserTimezone): string => { try { return getSpaceDate(new Date(), timezone); } catch { return new Date().toISOString().slice(0, 10); } };
 const emptyToday = (date = currentDate()): AppToday => ({ date, myMood: null, myEnergy: null, myWant: null, myNote: "", myGuess: null, partnerMood: null, partnerEnergy: null, partnerWant: null, partnerNote: null, revealed: false });
-const defaults = { space: null, me: null, partner: null, today: emptyToday(), story: [] as StoryEntry[], plannedActivities: [] as string[], dailyQuestion: { id: "q1", text: "Что тебе хочется получить от меня сейчас?", options: ["Объятия", "Немного тишины"], myAnswer: null, partnerAnswered: false, partnerAnswer: null }, whoPrompts: [{ id: "w1", text: "Кто первым сорвётся завтра в путешествие?", left: "Я", right: "Партнёр", myVote: null, partnerVote: null }], homeVariant: "v1" as HomeVariant, revealVariant: "v1" as "v1" | "v2", world: createInitialWorld(), economy: createInitialEconomy("local-preview", currentDate()) };
+const defaults = { space: null, me: null, partner: null, today: emptyToday(), story: [] as StoryEntry[], plannedActivities: [] as string[], dailyQuestion: { id: "q1", text: "Что тебе хочется получить от меня сейчас?", options: ["Объятия", "Немного тишины"], myAnswer: null, partnerAnswered: false, partnerAnswer: null }, whoPrompts: [{ id: "w1", text: "Кто первым сорвётся завтра в путешествие?", left: "Я", right: "Партнёр", myVote: null, partnerVote: null }], homeVariant: "v1" as HomeVariant, revealVariant: "v1" as "v1" | "v2", world: createInitialWorld(), worldRevision: 0, economy: createInitialEconomy("local-preview", currentDate()) };
 const persisted = readLocalState<typeof defaults>(defaults);
 const initial = { ...defaults, ...persisted, world: normalizeWorld(persisted.world, new Date().toISOString()), economy: normalizeEconomy(persisted.economy ?? defaults.economy, currentDate()) };
 
@@ -82,17 +84,17 @@ export const useAppStore = create<AppState>((set, get) => {
       economy = applySparkTransaction(economy, { id: `ledger-${action.id}`, userId: economy.wallet.userId, amount: result.reward.amount, reason: result.reward.reason, idempotencyKey: result.reward.idempotencyKey, createdAt: action.at, metadata: { action: action.type } });
       reward = result.reward.amount;
     }
-    const newMemory = result.snapshot.memories.find((memory) => memory.id === `memory-${action.id}`);
+    const newMemory = result.snapshot.memories.find((memory) => !state.world.memories.some((current) => current.id === memory.id));
     const story = newMemory && !state.story.some((entry) => entry.sourceId === newMemory.id)
       ? [{ id: `story-${newMemory.id}`, sourceId: newMemory.id, sourceType: "activity" as const, date: newMemory.createdAt.slice(0, 10), type: "activity" as const, title: newMemory.title, body: newMemory.body, tone: newMemory.tone, createdAt: newMemory.createdAt }, ...state.story]
       : state.story;
     commit({ world: result.snapshot, economy, story });
-    void syncWorldAction(action);
+    void syncWorldAction(action, state.worldRevision);
     return { message: result.message, reward };
   };
   return {
     ...initial,
-    setOnboarding: (space, me) => commit({ space, me, partner: null, today: emptyToday(currentDate(space.timezone)), world: createInitialWorld(), economy: createInitialEconomy(me.id, currentDate(space.timezone)) }),
+    setOnboarding: (space, me) => commit({ space, me, partner: null, today: emptyToday(currentDate(space.timezone)), world: createInitialWorld(), worldRevision: 0, economy: createInitialEconomy(me.id, currentDate(space.timezone)) }),
     updateToday: (patch) => commit({ today: { ...get().today, ...patch } }),
     submitCheckin: (patch) => {
       const state = get();
@@ -140,7 +142,7 @@ export const useAppStore = create<AppState>((set, get) => {
         reward = result.reward.amount;
       }
       commit({ world: result.snapshot, economy });
-      void syncWorldAction(action);
+      void syncWorldAction(action, state.worldRevision);
       return { message: result.message, reward };
     },
     interactRoom: (interaction) => {
@@ -149,7 +151,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const action = { id: `local-room-${interaction.objectId}-${interaction.interaction}-${Date.now()}`, type: "room_interact" as const, actorId: state.me?.id ?? "local-preview", objectId: interaction.objectId as RoomObjectId, interaction: interaction.interaction, at };
       const result = reduceWorld(state.world, action);
       commit({ world: result.snapshot });
-      void syncWorldAction(action);
+      void syncWorldAction(action, state.worldRevision);
       return { message: result.message, reward: 0 };
     },
     unlockWithSparks: (itemId, price) => {
@@ -168,7 +170,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const at = new Date().toISOString();
       const world = { ...state.world, equippedRoomItems: { ...state.world.equippedRoomItems, [item.slot]: itemId }, updatedAt: at };
       commit({ world });
-      void syncWorldEquipment(world);
+      void syncWorldEquipment(world, state.worldRevision);
       return true;
     },
     unequipRoomItem: (slot) => {
@@ -176,7 +178,7 @@ export const useAppStore = create<AppState>((set, get) => {
       if (!state.world.equippedRoomItems[slot]) return false;
       const world = { ...state.world, equippedRoomItems: { ...state.world.equippedRoomItems, [slot]: null }, updatedAt: new Date().toISOString() };
       commit({ world });
-      void syncWorldEquipment(world);
+      void syncWorldEquipment(world, state.worldRevision);
       return true;
     },
     equipWegoItem: (itemId) => {
@@ -187,7 +189,7 @@ export const useAppStore = create<AppState>((set, get) => {
       const equipped = { ...state.world.equippedWegoItems, [item.slot]: itemId };
       const world = { ...state.world, equippedWegoItems: equipped, outfitId: equipped.outfit, updatedAt: at };
       commit({ world });
-      void syncWorldEquipment(world);
+      void syncWorldEquipment(world, state.worldRevision);
       return true;
     },
     unequipWegoItem: (slot) => {
@@ -195,33 +197,26 @@ export const useAppStore = create<AppState>((set, get) => {
       if (!state.world.equippedWegoItems[slot]) return false;
       const world = { ...state.world, equippedWegoItems: { ...state.world.equippedWegoItems, [slot]: null }, updatedAt: new Date().toISOString() };
       commit({ world });
-      void syncWorldEquipment(world);
+      void syncWorldEquipment(world, state.worldRevision);
       return true;
     },
     addSharedPlan: (title, date) => {
       const state = get();
-      const plan: SharedPlan = { id: `plan-${Date.now()}`, title: title.trim(), date, createdBy: state.me?.id ?? "local-preview", completedBy: [], tone: "lilac" };
-      commit({ world: { ...state.world, plans: [plan, ...state.world.plans], updatedAt: new Date().toISOString() } });
+      const planId = `plan-${Date.now()}`;
+      commitWorldAction({ id: `create-${planId}`, type: "plan_create", actorId: state.me?.id ?? "local-preview", planId, title: title.trim(), date, at: new Date().toISOString() });
     },
     completeSharedPlan: (id) => {
       const state = get();
       const actorId = state.me?.id ?? "local-preview";
       const plan = state.world.plans.find((item) => item.id === id);
       if (!plan || plan.completedBy.includes(actorId)) return;
-      const result = reduceWorld(state.world, { id: `complete-${id}-${actorId}`, type: "plan_complete", actorId, at: new Date().toISOString() });
-      const plans = result.snapshot.plans.map((item) => item.id === id ? { ...item, completedBy: [...item.completedBy, actorId] } : item);
-      let economy = state.economy;
-      if (result.reward && canEarnDaily(economy, result.reward.amount, result.snapshot.updatedAt.slice(0, 10))) economy = applySparkTransaction(economy, { id: `ledger-${id}-${actorId}`, userId: economy.wallet.userId, amount: result.reward.amount, reason: "plan", idempotencyKey: result.reward.idempotencyKey, createdAt: result.snapshot.updatedAt, metadata: { planId: id } });
-      commit({ world: { ...result.snapshot, plans }, economy });
+      commitWorldAction({ id: `complete-${id}-${actorId}`, type: "plan_complete", actorId, planId: id, at: new Date().toISOString() });
     },
     addMemory: (title, body, kind = "note") => {
       const state = get();
       const at = new Date().toISOString();
-      const memory: MemoryEntry = { id: `memory-${Date.now()}`, title: title.trim(), body: body.trim(), createdAt: at, kind, tone: "yellow" };
-      const result = reduceWorld(state.world, { id: memory.id, type: "memory", actorId: state.me?.id ?? "local-preview", at });
-      let economy = state.economy;
-      if (result.reward && canEarnDaily(economy, result.reward.amount, at.slice(0, 10))) economy = applySparkTransaction(economy, { id: `ledger-${memory.id}`, userId: economy.wallet.userId, amount: result.reward.amount, reason: "memory", idempotencyKey: result.reward.idempotencyKey, createdAt: at, metadata: { memoryId: memory.id } });
-      commit({ world: { ...result.snapshot, memories: [memory, ...state.world.memories] }, economy });
+      const memoryId = `memory-${Date.now()}`;
+      commitWorldAction({ id: `create-${memoryId}`, type: "memory", actorId: state.me?.id ?? "local-preview", memoryId, title: title.trim(), body: body.trim(), memoryKind: kind, at });
     },
     setRoomVibe: (vibe) => {
       const state = get();
@@ -270,23 +265,30 @@ export const useAppStore = create<AppState>((set, get) => {
   };
 });
 
-async function syncWorldAction(action: WorldAction): Promise<void> {
+async function syncWorldAction(action: WorldAction, expectedRevision: number): Promise<void> {
   try {
     const { apiFetch, isApiEnabled } = await import("../lib/api-client");
     if (!isApiEnabled()) return;
-    const response = await apiFetch<{ world: WorldSnapshot }>("/world/actions", { method: "POST", body: JSON.stringify(action) });
-    useAppStore.setState({ world: normalizeWorld(response.world) });
+    const response = await apiFetch<WorldCommandResponse>("/world/commands", { method: "POST", body: JSON.stringify(createWorldCommand(action, expectedRevision)) });
+    useAppStore.setState({ world: normalizeWorld(response.world), worldRevision: response.revision });
   } catch {
-    // Local-first state remains authoritative until the next successful bootstrap.
+    try {
+      const { apiFetch, isApiEnabled } = await import("../lib/api-client");
+      if (!isApiEnabled()) return;
+      const current = await apiFetch<{ world: WorldSnapshot; revision: number }>("/world");
+      useAppStore.setState({ world: normalizeWorld(current.world), worldRevision: current.revision });
+    } catch {
+      // The optimistic state remains available until the API is reachable again.
+    }
   }
 }
 
-async function syncWorldEquipment(world: WorldSnapshot): Promise<void> {
+async function syncWorldEquipment(world: WorldSnapshot, expectedRevision: number): Promise<void> {
   try {
     const { apiFetch, isApiEnabled } = await import("../lib/api-client");
     if (!isApiEnabled()) return;
-    const response = await apiFetch<{ world: WorldSnapshot }>("/world/equipment", { method: "PUT", body: JSON.stringify({ equippedRoomItems: world.equippedRoomItems, equippedWegoItems: world.equippedWegoItems }) });
-    useAppStore.setState({ world: normalizeWorld(response.world) });
+    const response = await apiFetch<{ world: WorldSnapshot; revision: number }>("/world/equipment", { method: "PUT", body: JSON.stringify({ commandId: `equipment-${Date.now()}-${Math.random().toString(36).slice(2)}`, expectedRevision, equippedRoomItems: world.equippedRoomItems, equippedWegoItems: world.equippedWegoItems }) });
+    useAppStore.setState({ world: normalizeWorld(response.world), worldRevision: response.revision });
   } catch {
     // Equipment stays available locally until the API is reachable again.
   }

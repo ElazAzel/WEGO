@@ -13,5 +13,8 @@ export default defineConfig({
       "@wego/ui": path.resolve(currentDir, "../../packages/ui/src"),
     },
   },
-  server: { port: 5173 },
+  server: {
+    port: 5173,
+    proxy: { "/v1": { target: "http://127.0.0.1:8787", changeOrigin: true } },
+  },
 });

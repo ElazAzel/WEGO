@@ -1,0 +1,47 @@
+import { useMemo, useState } from "react";
+import { WButton, WCard, WChip } from "@wego/ui";
+import { PageHeader } from "../../components/layout/PageHeader";
+import { useLifeRecords, useSpaceDate } from "./life-api";
+
+const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const pad = (value: number) => String(value).padStart(2, "0");
+const dateKey = (value: Date) => `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+
+function startOfWeek(value: Date) {
+  const result = new Date(value);
+  const day = (result.getDay() + 6) % 7;
+  result.setDate(result.getDate() - day);
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function monthLabel(value: Date) {
+  return value.toLocaleDateString("ru-RU", { month: "long", year: "numeric" }).replace(/^./, char => char.toUpperCase());
+}
+
+export function CalendarPage() {
+  const { records, command, busy } = useLifeRecords("calendar");
+  const [view, setView] = useState<"month" | "week" | "day">("month");
+  const [title, setTitle] = useState("");
+  const [cursor, setCursor] = useState(() => { const value = new Date(); value.setDate(1); value.setHours(0, 0, 0, 0); return value; });
+  const [selectedDate, setSelectedDate] = useState(dateKey(new Date()));
+  const date = useSpaceDate();
+  const events = useMemo(() => records.map(record => ({ ...record, title: String(record.data.title), start: String(record.data.start), end: String(record.data.end) })), [records]);
+  const eventDays = useMemo(() => new Set(events.map(event => event.start.slice(0, 10))), [events]);
+  const grid = useMemo(() => {
+    const firstDay = (new Date(cursor.getFullYear(), cursor.getMonth(), 1).getDay() + 6) % 7;
+    const count = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+    const size = Math.ceil((firstDay + count) / 7) * 7;
+    return Array.from({ length: size }, (_, index) => { const value = new Date(cursor.getFullYear(), cursor.getMonth(), index - firstDay + 1); return { value, iso: dateKey(value), inMonth: value.getMonth() === cursor.getMonth(), day: value.getDate() }; });
+  }, [cursor]);
+  const visibleEvents = useMemo(() => {
+    if (view === "month") return events;
+    if (view === "day") return events.filter(event => event.start.slice(0, 10) === selectedDate);
+    const from = startOfWeek(new Date(`${selectedDate}T12:00:00`));
+    const to = new Date(from); to.setDate(to.getDate() + 7);
+    return events.filter(event => { const value = new Date(event.start); return value >= from && value < to; });
+  }, [events, selectedDate, view]);
+  const changeMonth = (offset: number) => setCursor(current => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+
+  return <div className="app-page life-page"><PageHeader eyebrow="Общее пространство" title="Календарь" description={`${date} · события, поездки и сроки дел в одном месте`} action={<WButton size="sm" onClick={() => document.getElementById("new-calendar-event")?.focus()}>+ Событие</WButton>} /><div className="screen-padding life-toolbar"><div className="filter-row">{(["month", "week", "day"] as const).map(item => <WChip key={item} active={view === item} onClick={() => setView(item)}>{item === "month" ? "Месяц" : item === "week" ? "Неделя" : "День"}</WChip>)}</div><span className="sync-state">● синхронизировано</span></div><div className="screen-padding"><WCard tone="paper" className="calendar-grid"><div className="calendar-heading"><button type="button" className="calendar-nav" aria-label="Предыдущий месяц" onClick={() => changeMonth(-1)}>‹</button><span>{monthLabel(cursor)}</span><button type="button" className="calendar-nav" aria-label="Следующий месяц" onClick={() => changeMonth(1)}>›</button></div><div className="calendar-weekdays">{days.map(day => <span key={day}>{day}</span>)}</div><div className="calendar-days">{grid.map(cell => <button type="button" key={cell.iso} className={`calendar-day ${cell.iso === selectedDate ? "is-selected" : ""} ${cell.iso === dateKey(new Date()) ? "is-today" : ""} ${eventDays.has(cell.iso) ? "has-event" : ""} ${!cell.inMonth ? "is-outside" : ""}`} onClick={() => { if (cell.inMonth) { setSelectedDate(cell.iso); setView("day"); } }} disabled={!cell.inMonth}>{cell.day}</button>)}</div><div className="calendar-selection"><span>Выбрано</span><strong>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</strong></div></WCard></div><div className="screen-padding stack"><div className="w-mono-caps">{view === "month" ? "События месяца" : view === "week" ? "События недели" : "Почасовой день"}</div>{visibleEvents.map(event => <WCard key={event.id} tone="lilac" className="life-row"><div><div className="w-mono-caps">{event.start.slice(0, 10)} · {event.data.allDay ? "весь день" : new Date(event.start).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div><div className="life-title">{event.title}</div><small>{event.data.repeat !== "none" ? `Повтор: ${event.data.repeat}` : "Одно событие"}{event.data.timezone ? ` · ${String(event.data.timezone)}` : ""}</small></div><span className="record-dot" /></WCard>)}{visibleEvents.length === 0 && <WCard tone="cream"><div className="life-title">Свободный день</div><p>Добавьте событие или привяжите к этой дате задачу.</p></WCard>}<WCard tone="cream" className="life-form"><div className="w-mono-caps">Быстро добавить событие</div><input id="new-calendar-event" value={title} onChange={event => setTitle(event.target.value)} placeholder="Например, ужин вдвоём" /><WButton size="sm" disabled={!title.trim() || busy} onClick={() => { void command({ type: "put", id: `event-${Date.now()}`, kind: "calendar", data: { title, start: `${selectedDate}T19:00:00+05:00`, end: `${selectedDate}T21:00:00+05:00`, allDay: false, timezone: "Asia/Almaty", repeat: "none", description: "", reminderMinutes: 30, exceptionDates: [] }, expectedRevision: 0 }); setTitle(""); }}>Добавить</WButton></WCard></div></div>;
+}

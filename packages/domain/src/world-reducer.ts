@@ -41,6 +41,23 @@ function advanceMoveIn(cozy: WorldSnapshot["cozy"], action: WorldAction): WorldS
 }
 
 function cozyTransition(snapshot: WorldSnapshot, action: WorldAction): WorldActionResult | null {
+  if (action.type === "plan_create" && action.planId && action.title && action.date) {
+    if (snapshot.plans.some((plan) => plan.id === action.planId)) return { snapshot: { ...snapshot, ...appendAction(snapshot, action) }, reward: null, message: "Этот план уже сохранён." };
+    const plan = { id: action.planId, title: action.title.trim(), date: action.date, createdBy: action.actorId, completedBy: [], tone: "lilac" as const };
+    return { snapshot: { ...snapshot, ...appendAction(snapshot, action), plans: [plan, ...snapshot.plans].slice(0, 100) }, reward: null, message: "Общий план появился в комнате." };
+  }
+  if (action.type === "plan_complete" && action.planId) {
+    const target = snapshot.plans.find((plan) => plan.id === action.planId);
+    if (!target) return { snapshot: { ...snapshot, ...appendAction(snapshot, action) }, reward: null, message: "Этот план не найден." };
+    if (target.completedBy.includes(action.actorId)) return { snapshot: { ...snapshot, ...appendAction(snapshot, action) }, reward: null, message: "Ты уже отметил этот план." };
+    const plans = snapshot.plans.map((plan) => plan.id === action.planId ? { ...plan, completedBy: [...plan.completedBy, action.actorId] } : plan);
+    return { snapshot: { ...snapshot, ...appendAction(snapshot, action), plans, needs: adjust(snapshot.needs, { connection: 10, joy: 8 }) }, reward: { idempotencyKey: action.id, amount: 15, reason: "plan", label: "+15 Искр за общий план" }, message: "Общий план стал частью вашей истории." };
+  }
+  if (action.type === "memory" && action.memoryId && action.title && action.body) {
+    if (snapshot.memories.some((entry) => entry.id === action.memoryId)) return { snapshot: { ...snapshot, ...appendAction(snapshot, action) }, reward: null, message: "Эта память уже сохранена." };
+    const entry = memory(action.memoryId, action.title.trim(), action.body.trim(), action.at, action.memoryKind ?? "note");
+    return { snapshot: { ...snapshot, ...appendAction(snapshot, action), memories: [entry, ...snapshot.memories].slice(0, 100), needs: adjust(snapshot.needs, { connection: 8, comfort: 6 }) }, reward: { idempotencyKey: action.id, amount: 12, reason: "memory", label: "+12 Искр за память" }, message: "Новая маленькая память сохранена." };
+  }
   if (action.type === "move_in_start") {
     if (snapshot.cozy.roomPhase !== "showcase") return { snapshot: { ...snapshot, ...appendAction(snapshot, action) }, reward: null, message: "Вего уже живёт в вашей комнате." };
     return { snapshot: { ...snapshot, ...appendAction(snapshot, action), cozy: { ...snapshot.cozy, roomPhase: "move-in", moveInStep: "meet-wego", roomBuildLevel: 0, pose: "curious" } }, reward: null, message: "Вего: «Я переезжаю к вам. Поможешь найти мне первый уголок?»" };
