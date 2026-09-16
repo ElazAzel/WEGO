@@ -108,7 +108,10 @@ export function buildServer(options: BuildServerOptions = {}) {
     const require = createRequire(`${process.cwd()}/package.json`);
     let Pool: any;
     try { Pool = require("pg").Pool; } catch { throw new Error("pg package is required for production DATABASE_URL"); }
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 10, statement_timeout: 10000 });
+    const databaseUrl = process.env.DATABASE_URL?.includes("sslmode=require") && !process.env.DATABASE_URL.includes("uselibpqcompat")
+      ? `${process.env.DATABASE_URL}&uselibpqcompat=true`
+      : process.env.DATABASE_URL;
+    const pool = new Pool({ connectionString: databaseUrl, max: 10, connectionTimeoutMillis: 8000, statement_timeout: 10000 });
     store = new PostgresStore(pool);
     core = new PostgresCoreRepository(pool);
     app.addHook("onClose", async () => store.close());
