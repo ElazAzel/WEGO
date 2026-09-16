@@ -10,12 +10,14 @@ export interface WButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
-export function WButton({ variant = "primary", size = "md", loading = false, disabled, children, className = "", ...props }: WButtonProps) {
+export function WButton({ variant = "primary", size = "md", loading = false, disabled, children, className = "", type = "button", ...props }: WButtonProps) {
   return (
     <button
+      type={type}
       className={`w-button w-button--${variant} w-button--${size} ${className}`.trim()}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      data-loading={loading || undefined}
       {...props}
     >
       {loading ? "Загрузка…" : children}

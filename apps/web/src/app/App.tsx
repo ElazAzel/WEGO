@@ -21,7 +21,7 @@ import { useAppStore, type AppToday } from "../store/use-app-store";
 import { acceptInvite, apiFetch, authenticateTelegram, isApiEnabled, isHostedBuildMisconfigured } from "../lib/api-client";
 import { useSpaceEvents } from "../hooks/useSpaceEvents";
 import { registerWegoServiceWorker } from "../lib/pwa";
-import { getJoinToken, isTelegram } from "../lib/telegram";
+import { getJoinToken, isTelegram, openTelegramBot } from "../lib/telegram";
 
 export function App() {
   useEffect(() => { void registerWegoServiceWorker(); }, []);
@@ -101,7 +101,8 @@ export function App() {
 }
 
 function RemoteGate({ status, error, onRetry }: { status: "idle" | "loading" | "error"; error: string | null; onRetry: () => void }) {
-  return <div className="remote-gate"><div className="w-mono-caps">WEGO / TELEGRAM</div><h1 className="w-serif">{status === "error" ? "Не удалось войти" : "Открываем ваш мир"}</h1><p>{error ?? "Подтверждаем Telegram-аккаунт и загружаем общую комнату."}</p>{status === "error" && <button type="button" onClick={onRetry}>Повторить</button>}</div>;
+  const outsideTelegram = Boolean(error?.includes("из Telegram"));
+  return <main className="remote-gate"><div className="remote-gate__card"><div className="remote-gate__mark" aria-hidden="true"><span>W</span></div><div className="w-mono-caps">WEGO · ЛИЧНАЯ КОМНАТА</div><h1 className="w-serif">{status === "error" ? (outsideTelegram ? "WEGO живёт внутри Telegram" : "Не удалось подключиться") : "Открываем ваш мир"}</h1><p>{outsideTelegram ? "Откройте бота WEGO в Telegram — так мы узнаем ваш аккаунт и покажем вашу настоящую комнату." : (error ?? "Подтверждаем Telegram-аккаунт и загружаем общую комнату.")}</p><div className="remote-gate__actions">{outsideTelegram ? <button type="button" className="remote-gate__primary" onClick={() => openTelegramBot()}>Открыть @wego_app_bot <span aria-hidden="true">↗</span></button> : status === "error" && <button type="button" className="remote-gate__primary" onClick={onRetry}>Повторить <span aria-hidden="true">↻</span></button>}</div><small className="remote-gate__hint">Ваши данные загружаются только после входа через Telegram.</small></div></main>;
 }
 
 type ApiUser = { id: string; name: string; tone: "coral" | "lilac" };

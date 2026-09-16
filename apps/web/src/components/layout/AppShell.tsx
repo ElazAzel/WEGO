@@ -23,9 +23,10 @@ export function AppShell() {
   const rolloverIfNeeded = useAppStore((state) => state.rolloverIfNeeded);
   useEffect(() => { rolloverIfNeeded(); const timer = window.setInterval(rolloverIfNeeded, 60_000); window.addEventListener("focus", rolloverIfNeeded); return () => { window.clearInterval(timer); window.removeEventListener("focus", rolloverIfNeeded); }; }, [rolloverIfNeeded]);
   const current = (["/more", "/notes", "/cards", "/history", "/pet", "/notifications"].some(path => location.pathname.startsWith(path)) ? "story" : Object.entries(paths).find(([, path]) => location.pathname.startsWith(path))?.[0] ?? "wego") as TabId;
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [location.pathname]);
   return (
     <div className="app-shell">
-      <main className="app-shell__content"><Outlet /></main>
+      <main className="app-shell__content" id="main-content"><Outlet /></main>
       <WTabBar current={current} onChange={(tab) => { ui.setTab(tab); navigate(paths[tab]); }} />
       <CheckinSheet />
       <GuessSheet />

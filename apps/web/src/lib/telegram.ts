@@ -46,6 +46,12 @@ export function openTelegramShare(url: string, text: string): void {
   else window.open(shareUrl, "_blank", "noopener,noreferrer");
 }
 
+export function openTelegramBot(username = import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "wego_app_bot"): void {
+  const url = `https://t.me/${username.replace(/^@/, "")}`;
+  if (window.Telegram?.WebApp?.openTelegramLink) window.Telegram.WebApp.openTelegramLink(url);
+  else window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export function requestTelegramWriteAccess(): Promise<boolean> {
   const request = window.Telegram?.WebApp?.requestWriteAccess;
   if (!request) return Promise.resolve(false);

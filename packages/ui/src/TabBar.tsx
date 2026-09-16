@@ -6,5 +6,5 @@ const tabs: ReadonlyArray<{ id: TabId; label: string; ariaLabel: string; icon: I
 ];
 
 export function WTabBar({ current, onChange }: { current: TabId; onChange: (tab: TabId) => void }) {
-  return <nav className="w-tabbar" aria-label="Основная навигация"><div role="tablist">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-label={tab.ariaLabel} aria-selected={current === tab.id} className={current === tab.id ? "is-active" : ""} onClick={() => onChange(tab.id)}><Icon name={tab.icon} /><span>{tab.label}</span></button>)}</div></nav>;
+  return <nav className="w-tabbar" aria-label="Основная навигация"><div role="tablist">{tabs.map((tab) => <button key={tab.id} type="button" role="tab" aria-label={tab.ariaLabel} aria-selected={current === tab.id} aria-current={current === tab.id ? "page" : undefined} className={current === tab.id ? "is-active" : ""} onClick={() => onChange(tab.id)}><Icon name={tab.icon} size={22} strokeWidth={current === tab.id ? 2 : 1.6} /><span>{tab.label}</span></button>)}</div></nav>;
 }

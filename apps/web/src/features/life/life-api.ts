@@ -33,45 +33,61 @@ function readLocalRecords(spaceId: string, fallback: LifeRecord[]): LifeRecord[]
     const raw = window.localStorage.getItem(localStorageKey(spaceId));
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? mergeWithPreview(parsed as LifeRecord[], fallback) : fallback;
+    return Array.isArray(parsed) ? mergeWithPreview((parsed as LifeRecord[]).filter(record => !fallback.length || fallback.some(seedRecord => seedRecord.kind === record.kind)), fallback) : fallback;
   } catch { return fallback; }
 }
 
 function writeLocalRecords(spaceId: string, records: LifeRecord[]): void {
-  try { window.localStorage.setItem(localStorageKey(spaceId), JSON.stringify(records)); } catch { /* storage is optional */ }
+  try {
+    const raw = window.localStorage.getItem(localStorageKey(spaceId));
+    const parsed = raw ? JSON.parse(raw) as unknown : [];
+    const existing = Array.isArray(parsed) ? parsed as LifeRecord[] : [];
+    const byId = new Map(existing.map(record => [record.id, record]));
+    records.forEach(record => byId.set(record.id, record));
+    window.localStorage.setItem(localStorageKey(spaceId), JSON.stringify([...byId.values()]));
+  } catch { /* storage is optional */ }
 }
 
 export function useLifeRecords(kind?: LifeRecord["kind"]) {
   const space = useAppStore(s => s.space);
-  const previewRecords = useMemo(() => seed.filter(r => !kind || r.kind === kind), [kind]);
+  const apiMode = isApiEnabled();
+  const previewRecords = useMemo(() => apiMode ? [] : seed.filter(r => !kind || r.kind === kind), [apiMode, kind]);
   const spaceId = space?.id ?? "local";
-  const [records, setRecords] = useState<LifeRecord[]>(() => readLocalRecords(spaceId, previewRecords));
+  const [records, setRecords] = useState<LifeRecord[]>(() => apiMode ? [] : readLocalRecords(spaceId, previewRecords));
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(apiMode);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   useEffect(() => {
-    if (isApiEnabled()) return;
+    if (apiMode) return;
     setRecords(readLocalRecords(spaceId, previewRecords));
-  }, [kind, previewRecords, spaceId]);
+    setLoading(false);
+    setError(null);
+  }, [apiMode, kind, previewRecords, spaceId]);
   useEffect(() => {
     if (!isApiEnabled()) writeLocalRecords(spaceId, records);
   }, [records, spaceId]);
   useEffect(() => {
-    if (!isApiEnabled() || !space?.id) return;
+    if (!apiMode || !space?.id) { setLoading(false); return; }
     let active = true;
-    void apiFetch<{ records: LifeRecord[] }>(`/spaces/${space.id}/life`).then(result => { if (active) setRecords(mergeWithPreview(result.records.filter(r => !kind || r.kind === kind), previewRecords)); }).catch(() => undefined);
+    setLoading(true);
+    setError(null);
+    void apiFetch<{ records: LifeRecord[] }>(`/spaces/${space.id}/life`).then(result => { if (active) setRecords(result.records.filter(r => !kind || r.kind === kind)); }).catch(cause => { if (active) setError(cause instanceof Error ? cause.message : "Не удалось загрузить данные."); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [kind, previewRecords, space?.id]);
+  }, [apiMode, kind, previewRecords, refreshToken, space?.id]);
   type ClientCommand = { type: "put"; id: string; kind: string; data: unknown; expectedRevision?: number } | { type: "delete" | "claimTask" | "complete" | "convertWish"; id: string; planId?: string; expectedRevision?: number } | { type: "answer"; id: string; answer: string; expectedRevision?: number };
   const command = useCallback(async (value: ClientCommand) => {
     setBusy(true);
+    setError(null);
     try {
       const current = records.find(record => record.id === value.id);
       const isPreviewRecord = current?.spaceId === "local" && current.createdBy === "local-preview";
-      if (!isApiEnabled() || !space?.id || isPreviewRecord) {
+      if (!apiMode || !space?.id || isPreviewRecord) {
         setRecords(current => {
           if (value.type === "delete") return current.filter(r => r.id !== value.id);
-          if (value.type === "complete" || value.type === "claimTask") return current.map(r => r.id === value.id ? { ...r, revision: r.revision + 1, data: { ...r.data, ...(value.type === "complete" ? { status: "done" } : { assigneeId: "local-preview" }) } } : r);
+          if (value.type === "complete" || value.type === "claimTask") return current.map(r => r.id === value.id ? { ...r, revision: r.revision + 1, data: { ...r.data, ...(value.type === "complete" ? { status: "done" } : { assigneeId: useAppStore.getState().me?.id ?? "local-preview" }) } } : r);
           if (value.type === "put") { const existing = current.find(r => r.id === value.id); const record: LifeRecord = { id: value.id, spaceId, kind: value.kind as LifeRecord["kind"], revision: (existing?.revision ?? 0) + 1, createdBy: existing?.createdBy ?? "local-preview", createdAt: existing?.createdAt ?? now, updatedAt: now, data: value.data as Record<string, unknown> }; return existing ? current.map(r => r.id === value.id ? record : r) : [...current, record]; }
-          if (value.type === "answer") return current.map(r => r.id === value.id ? { ...r, revision: r.revision + 1, data: { ...r.data, answers: { ...((r.data.answers ?? {}) as Record<string, string>), "local-preview": value.answer } } } : r);
+          if (value.type === "answer") return current.map(r => r.id === value.id ? { ...r, revision: r.revision + 1, data: { ...r.data, answers: { ...((r.data.answers ?? {}) as Record<string, string>), [useAppStore.getState().me?.id ?? "local-preview"]: value.answer } } } : r);
           if (value.type === "convertWish") {
             const wish = current.find(r => r.id === value.id);
             if (!wish) return current;
@@ -83,10 +99,13 @@ export function useLifeRecords(kind?: LifeRecord["kind"]) {
         return;
       }
       const result = await apiFetch<{ records: LifeRecord[] }>(`/spaces/${space.id}/life/commands`, { method: "POST", body: JSON.stringify({ commandId: crypto.randomUUID(), command: { ...value, expectedRevision: value.expectedRevision ?? records.find(r => r.id === value.id)?.revision ?? 0 } }) });
-      setRecords(mergeWithPreview(result.records.filter(r => !kind || r.kind === kind), previewRecords));
+      setRecords(result.records.filter(r => !kind || r.kind === kind));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Не удалось сохранить изменения.");
     } finally { setBusy(false); }
-  }, [kind, previewRecords, records, space?.id, spaceId]);
-  return { records, busy, command };
+  }, [apiMode, kind, records, space?.id, spaceId]);
+  const retry = useCallback(() => setRefreshToken(value => value + 1), []);
+  return { records, busy, loading, error, retry, command };
 }
 
 export function useSpaceDate(): string { const timezone = useAppStore(s => s.space?.timezone ?? "Asia/Almaty"); return new Intl.DateTimeFormat("ru-RU", { timeZone: timezone, day: "numeric", month: "long", year: "numeric" }).format(new Date()); }
