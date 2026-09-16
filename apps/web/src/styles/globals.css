@@ -464,6 +464,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .settings-account span, .settings-partner small { color: var(--muted); font-size: 12px; }
 .settings-partner { border-top: 1px solid var(--line); padding-top: 14px; }
 .settings-invite-url { background: rgba(255,255,255,.55); border-radius: var(--r-sm); display: block; font-size: 11px; margin: 12px 0; overflow-wrap: anywhere; padding: 8px; }
+.partner-invite-card { position: relative; }
+.partner-invite-card p { max-width: 42ch; }
 @media (min-width: 681px) { .app-shell { margin: 0 auto; max-width: 680px; } .w-tabbar { left: 50%; transform: translateX(-50%); } }
 @media (max-width: 420px) { .game-hud__actions { gap: 0; } .hud-action { min-width: 37px; } .need-strip { gap: 5px; } .wardrobe-grid { grid-template-columns: 1fr; } .wardrobe-item { align-items: center; display: grid; gap: 8px; grid-template-columns: 54px 1fr auto; text-align: left; } .wardrobe-item__icon { grid-row: span 2; height: 48px; margin: 0; width: 48px; } .wardrobe-item small { margin: 0; min-height: 0; } .wardrobe-item .w-button, .wardrobe-item .unlock-badge { grid-column: 3; grid-row: span 2; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; } }
@@ -475,9 +477,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .home-summary__counter { align-items: baseline; display: flex; gap: 9px; margin-top: 18px; position: relative; z-index: 1; }
 .home-summary__counter strong { font-size: clamp(38px, 12vw, 58px); letter-spacing: -.07em; line-height: .9; }
 .home-summary__counter span { color: var(--muted); font-size: 13px; }
-.home-summary__stats { border-top: 1px solid rgba(59, 34, 61, .12); display: grid; gap: 10px; grid-template-columns: repeat(4, 1fr); margin-top: 20px; padding-top: 14px; position: relative; z-index: 1; }
+.home-summary__stats { border-top: 1px solid rgba(59, 34, 61, .12); display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); margin-top: 20px; padding-top: 14px; position: relative; z-index: 1; }
 .home-summary__stats div { min-width: 0; }
-.home-summary__stats strong { display: block; font-size: 23px; }
+.home-summary__stats strong { display: block; font-size: clamp(16px, 4vw, 23px); letter-spacing: -.03em; }
 .home-summary__stats span { color: var(--muted); display: block; font-size: 10px; line-height: 1.2; margin-top: 3px; }
 .home-summary__next { align-items: center; display: flex; gap: 12px; padding: 14px 16px; }
 .home-summary__next small { color: var(--muted); display: block; font-size: 12px; margin-top: 4px; }

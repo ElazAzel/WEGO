@@ -41,6 +41,10 @@ GitHub Pages публикует веб-MVP с тем же сценарием, ч
 
 API — Fastify из `apps/api`. Для production ему нужны Node 24, PostgreSQL и секреты из `.env.example`. Перед запуском примените миграции из `packages/db/migrations` в каноническом порядке.
 
+Для WEGO создан отдельный production-проект Supabase: `wego-production`, ref `zzoqnxugybjvoroqplds`, регион `eu-central-1`. В него уже применены все пять миграций из `packages/db/migrations`, а тестовый запрос подтвердил 27 таблиц в `public`. WEGO не подключается к другим проектам организации.
+
+Фронтенд не должен подключаться к Supabase напрямую. Telegram-аккаунт, сессии, приглашения и права пары проходят через Fastify API; `DATABASE_URL` остаётся секретом API-сервера. Перед публичным запуском отдельно закройте доступ к таблицам через Supabase Data API политиками RLS или отключёнными public grants: сейчас таблицы нужны только серверному API, а не `anon`/`authenticated` клиентам.
+
 Минимальный запуск API:
 
 ```bash
