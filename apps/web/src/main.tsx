@@ -6,4 +6,5 @@ import "./styles/globals.css";
 import { initializeTelegram } from "./lib/telegram";
 
 initializeTelegram();
-ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>);
+const basePath = import.meta.env.BASE_URL === "/" ? undefined : import.meta.env.BASE_URL.replace(/\/$/, "");
+ReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><BrowserRouter basename={basePath}><App /></BrowserRouter></React.StrictMode>);
