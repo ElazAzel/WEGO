@@ -8,8 +8,9 @@ describe("notification policy", () => {
     expect(planNotification({ id: "1", userId: "u", category: "task", title: "T", body: "B", dueAt: "2026-09-15T19:00:00Z", expiresAt: "2026-09-15T17:00:00Z" }, preference, night)).toBeNull();
   });
   it("bounds retries and keeps transport policy separate from inbox state", () => {
+    const now = new Date("2026-09-15T12:00:00.000Z");
     const job = { id: "1", userId: "u", category: "task" as const, title: "T", body: "B", dueAt: "2026-09-15T10:00:00Z", expiresAt: "2026-09-16T10:00:00Z", attempts: 4, transports: ["telegram"] as ("telegram" | "webpush")[] };
-    expect(retryNotification(job)?.attempts).toBe(5);
-    expect(retryNotification({ ...job, attempts: 5 })).toBeNull();
+    expect(retryNotification(job, now)?.attempts).toBe(5);
+    expect(retryNotification({ ...job, attempts: 5 }, now)).toBeNull();
   });
 });
